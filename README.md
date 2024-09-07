@@ -19,6 +19,6 @@ Compact memory. Minimal operations. Minimal latency. Damn high thoughput.
 Other features:
 * Handles data up to 4GB (only/sorry - i can change this lmk)
 * Nifty heap & hash visualisation tools
-* Abilty to monitor and replicate in real-time
+* Abilty to monitor, replicate, snapshot, etc. instantaneously.
 * Multiple garbage collection algorithms depending on use-case
 * Fast as f
