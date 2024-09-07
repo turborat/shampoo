@@ -3,7 +3,7 @@ A serverless, high-performance data cache. The name is an amalgamation of an
 implementation detail and my favorite breakfast. 
 
 The orignal idea was something like redis but without TCP, then I realised it was 
-possible to accomplish in a decentralized fashion by relying heavily on 
+possible to accomplish in a serverless fashion and stil be performant by relying heavily on 
 compare-and-swap (CAS) atomic operations and memory barriers whilst minimising 
 copies by using shared memory for IPC. 
 
