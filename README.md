@@ -16,7 +16,7 @@ used to allocate from, the tail is the starting point for garbage collection.
 
 Other features:
 * Handles data up to 4GB (only/sorry - i can change this lmk)
-* Nifty text-mode heap & hash visualisation
+* Nifty heap & hash visualisation tools
 * Abilty to monitor and replicate in real-time
 * Multiple garbage collection algorithms depending on use-case
 * Fast as f
