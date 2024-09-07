@@ -1,0 +1,33 @@
+[package]
+name = "shmem"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = []
+
+[dependencies]
+cfg-if = "1.0"
+chrono = "0.4.35"
+regex = "1.10.4"
+
+[dependencies.xxhash-rust]
+version = "0.8.10"
+features = ["xxh3", "const_xxh3"]
+
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.26", default-features = false, features = ["fs", "mman"] }
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+win-sys = "0.3"
+
+[dev-dependencies]
+raw_sync = "0.1"
+clap = {version = "4", features = ["derive"]}
+env_logger = "0"
+
+[profile.release]
+debug = 1
