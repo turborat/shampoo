@@ -5,7 +5,7 @@ implementation detail and my favorite breakfast.
 The orignal idea was something like redis but without TCP, then I realised it was 
 possible to accomplish in a decentralized fashion by relying heavily on 
 compare-and-swap (CAS) atomic operations and memory barriers whilst minimising 
-copies by using shared memory. 
+copies by using shared memory for IPC. 
 
 There are two data structures in (shared) memory: a hash table and circular heap. The 
 heap has two pointers - head and tail - that avoid locking via CAS. The head is
