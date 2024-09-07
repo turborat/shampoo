@@ -98,7 +98,16 @@ pub fn run(args: Vec<String>) {
 }
 
 fn usage() {
-    die(-1, "try: put | puts | get | heap | idx | show | dump | map | gc | stress [-v]");
+    let msg =  "try:  put  [name]        <-v>      add named data via <stdin>
+      puts [name] [text] <-v>      add named text 
+      get  [name]        <-v>      get named data
+      heap               <-v>      display heap
+      idx                <-v>      display index
+      show               <-v>      show?
+      dump               <-v>      dump raw heap data
+      map                <-v>      render heap map
+      gc                 <-v>      start garbage collector\n";
+    die(-1, msg);
 }
 
 fn die(code:i32, msg:&str) {
