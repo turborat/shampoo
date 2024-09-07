@@ -18,6 +18,8 @@ Compact memory. Minimal operations. Minimal latency. Damn high thoughput.
 
 Other features:
 * Handles data up to 4GB (only/sorry - i can change this lmk)
+* Lock-free / highly concurrent
+* O(1) scalability!!
 * Nifty heap & hash visualisation tools
 * Abilty to monitor, replicate, snapshot, etc. instantaneously.
 * Multiple garbage collection algorithms depending on use-case
