@@ -1,4 +1,6 @@
-use std::{env, thread};
+use io::stdin;
+use std::{env, io, thread};
+use std::io::Read;
 use std::process::exit;
 use std::sync::atomic::Ordering::Relaxed;
 use std::thread::sleep;
@@ -6,6 +8,7 @@ use std::time::Duration;
 
 use crate::shampoo::{Shampoo, ShampooCondition};
 use crate::shmem::{str};
+use crate::util::mag_fmt;
 
 mod shampoo;
 mod index;
@@ -31,13 +34,22 @@ pub fn run(args: Vec<String>) {
 
     match args[1].as_str() {
         "put" => {
-            panic!("nyi");
+            if args.len() < 3 {
+                die(-2, "missing arg: key)");
+            }
+            let mut buf = Vec::new();
+            stdin().read_to_end(&mut buf).expect("Failed to read from stdin");
+            match Shampoo::init().put(&args[2], &buf) {
+                Ok(_) => println!("read {}", mag_fmt(buf.len() as u64)),
+                Err(ShampooCondition::AllocationFailure) => die(-7, "AllocationFailure -- Forget to run gc??"),
+                Err(err) => die(-8, &format!("{:?}", err))
+            };
         }
         "puts" => {
             if args.len() < 4 {
-                die(-2, "puts requires two additional arguments, key and value)");
+                die(-2, "required args: key, value)");
             }
-            match Shampoo::init().puts(&args[2], &args[3..].join(" ")) {
+            match Shampoo::init().puts(&args[2], &args[3]) {
                 Ok(_) => println!("ok"),
                 Err(err) => die(-3, &format!("{:?}", err))
             };

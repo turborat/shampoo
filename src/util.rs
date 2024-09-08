@@ -9,7 +9,7 @@ pub fn mag_fmt(value: u64) -> String {
     fn scale_num(value: u64, base: u64) -> String {
         let fp = value as f64 / base as f64;
         let rounded = (fp + 0.5f64) as u64;
-        if rounded < 10 {
+        if rounded < 10 && base != 1 {
             format!("{:.1}", fp)
         } else {
             format!("{}", rounded)
@@ -113,7 +113,7 @@ mod test {
         assert_eq!("10m", mag_fmt(10_000_000));
         assert_eq!("10g", mag_fmt(10_000_000_000));
 
-        assert_eq!("1.0b", mag_fmt(1));
+        assert_eq!("1b", mag_fmt(1));
         assert_eq!("1.0k", mag_fmt(1000));
         assert_eq!("1.0m", mag_fmt(1000_000));
         assert_eq!("1.0g", mag_fmt(1000_000_000));
