@@ -37,23 +37,21 @@ pub fn run(args: Vec<String>) {
             if args.len() < 3 {
                 die(-2, "missing arg: key)");
             }
+
             let mut buf = Vec::new();
-            stdin().read_to_end(&mut buf).expect("Failed to read from stdin");
+            if args.len() > 3 {
+                buf.extend_from_slice(args[3].as_bytes());
+            }
+            else {
+                stdin().read_to_end(&mut buf).unwrap();
+            };
+
             match Shampoo::init().put(&args[2], &buf) {
-                Ok(_) => println!("read {}", mag_fmt(buf.len() as u64)),
+                Ok(_) => println!("put {}", mag_fmt(buf.len() as u64)),
                 Err(ShampooCondition::AllocationFailure) => die(-7, "AllocationFailure -- Forget to run gc??"),
                 Err(err) => die(-8, &format!("{:?}", err))
             };
         }
-        "puts" => {
-            if args.len() < 4 {
-                die(-2, "required args: key, value)");
-            }
-            match Shampoo::init().puts(&args[2], &args[3]) {
-                Ok(_) => println!("ok"),
-                Err(err) => die(-3, &format!("{:?}", err))
-            };
-        },
         "get" => {
             if args.len() < 3 {
                 die(-4, "get requires an additional argument, key");

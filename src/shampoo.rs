@@ -85,7 +85,7 @@ impl Shampoo {
         Some(data)
     }
 
-    pub fn show_hash__(&self) {
+    pub fn show_hash(&self) {
         println!("{:?}", &self.hash.report(&|id| self.rard(id)));
         self.hash.print(|id| self.rard(id));
     }
