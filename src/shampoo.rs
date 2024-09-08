@@ -17,7 +17,7 @@ use libc::{MAP_SHARED, PROT_WRITE};
 use crate::blob::Blob;
 use crate::die;
 use crate::heap::Heap;
-use crate::index::Index;
+use crate::hash::Hash;
  use crate::util::{Matrix};
 use crate::util::puts;
 
@@ -36,7 +36,7 @@ pub enum ShampooCondition {
 
 pub struct Shampoo {
     heap: Heap,
-    idx: Index
+    hash: Hash
 }
 
 impl Shampoo {
@@ -49,16 +49,16 @@ impl Shampoo {
             c_ptr as *mut u8
         };
 
-        let idx = Index::attach(base, 64, own);
-        let heap_start = unsafe { base.add(idx.len()) } ;
+        let hash = Hash::attach(base, 64, own);
+        let heap_start = unsafe { base.add(hash.len()) } ;
         let heap_size = segment_size - (heap_start as usize - base as usize);
         let heap = Heap::attach(heap_start, heap_size);
 
-        Shampoo { heap, idx }
+        Shampoo { heap, hash }
     }
 
     fn is_garbage(&self, blob:*const Blob) -> bool {
-        !self.idx.references(blob, &|id| self.heap.rard(id))
+        !self.hash.references(blob, &|id| self.heap.rard(id))
     }
 
     fn rard(&self, id:u64) -> *const Blob {
@@ -67,7 +67,7 @@ impl Shampoo {
 
     fn _put(&self, name:&str, data:&[u8], ascii:bool) -> Result<(), ShampooCondition> {
         let blob = self.heap.allocate(name, data, ascii)?;
-        self.idx.put(blob, &|id|self.rard(id))?;
+        self.hash.put(blob, &|id|self.rard(id))?;
         Ok(())
     }
 
@@ -80,14 +80,14 @@ impl Shampoo {
     }
 
     pub fn get(&self, name:&str) -> Option<Vec<u8>> {
-        let blob = self.idx.get(name, |id| self.rard(id))?;
+        let blob = self.hash.get(name, |id| self.rard(id))?;
         let data = unsafe { (*blob).data() };
         Some(data)
     }
 
-    pub fn show_idx(&self) {
-        println!("{:?}", &self.idx.report(&|id| self.rard(id)));
-        self.idx.print(|id| self.rard(id));
+    pub fn show_hash__(&self) {
+        println!("{:?}", &self.hash.report(&|id| self.rard(id)));
+        self.hash.print(|id| self.rard(id));
     }
 
     pub fn show_heap(&self) {

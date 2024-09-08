@@ -11,7 +11,7 @@ use crate::shmem::{str};
 use crate::util::mag_fmt;
 
 mod shampoo;
-mod index;
+mod hash;
 mod heap;
 mod shmem;
 mod util;
@@ -64,7 +64,7 @@ pub fn run(args: Vec<String>) {
             };
         },
         "heap"      => Shampoo::init().show_heap(),
-        "idx"       => Shampoo::init().show_idx(),
+        "hash"      => Shampoo::init().show_hash(),
         "show"      => Shampoo::init().show(),
         "dump"      => Shampoo::init().dump(),
         "map"       => Shampoo::init().map(),
@@ -114,8 +114,8 @@ fn usage() {
       puts [name] [text] <-v>      add named text 
       get  [name]        <-v>      get named data
       heap               <-v>      display heap
-      idx                <-v>      display index
-      show               <-v>      show?
+      hash               <-v>      display hash
+      show               <-v>      show key / value pairs
       dump               <-v>      dump raw heap data
       map                <-v>      render heap map
       gc                 <-v>      start garbage collector\n";

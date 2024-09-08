@@ -16,7 +16,7 @@ struct Entry {
     id: u64
 }
 
-pub struct Index {
+pub struct Hash {
     base: *mut Entry,
     bins: u32
 }
@@ -28,9 +28,9 @@ pub struct IndexReport {
     overflows: u32
 }
 
-impl Index {
+impl Hash {
     pub fn attach(base: *mut u8, bins:u32, initialize:bool) -> Self {
-        let idx = Index{ base: base as *mut Entry, bins };
+        let hash = Hash { base: base as *mut Entry, bins };
 
         if initialize {
             puts(format!("index::init @{:x} {} bins", base as u64, bins));
@@ -40,7 +40,7 @@ impl Index {
             puts(format!("index::attach @{:x}, {} bins", base as u64, bins));
         }
 
-        idx
+        hash
     }
 
     pub fn put<F>(&self, blob:*const Blob, rard:&F) -> Result<*const Blob, ShampooCondition>
@@ -88,7 +88,7 @@ impl Index {
     pub fn get<F>(&self, name:&str, rard:F) -> Option<*const Blob>
         where F : Fn(u64) -> *const Blob
     {
-        let xx = Index::hash(name);
+        let xx = Hash::hash(name);
         let orig_bin = xx % self.bins;
         let mut bin = orig_bin;
 
@@ -228,28 +228,28 @@ impl Index {
 mod tests {
     use crate::blob::{Blob};
     use crate::heap::Heap;
-    use crate::index::Index;
+    use crate::hash::Hash;
 
     #[test]
     fn test_put_get() {
-        let mut idx_mem = [0u8; 256];
-        let idx = Index::attach(idx_mem.as_mut_ptr(), 4, true);
+        let mut hash_mem = [0u8; 256];
+        let hash = Hash::attach(hash_mem.as_mut_ptr(), 4, true);
 
         let mut heap_mem = [0u8; 128];
         let heap = Heap::attach(heap_mem.as_mut_ptr(), heap_mem.len());
         let blob_in = heap.allocates("blob1", "blah").unwrap();
 
-        idx.put(blob_in, &|id| heap.rard(id)).unwrap();
+        hash.put(blob_in, &|id| heap.rard(id)).unwrap();
 
-        let blob_out = idx.get("blob1", &|id| heap.rard(id)).unwrap();
+        let blob_out = hash.get("blob1", &|id| heap.rard(id)).unwrap();
         assert_eq!(blob_in, blob_out.cast_mut());
     }
 
     #[test]
     fn test_get_nothing() {
         let mut mem = [0u8; 256];
-        let idx = Index::attach(mem.as_mut_ptr(), 4, true);
-        match idx.get("abc", &|id|id as *const Blob) {
+        let hash = Hash::attach(mem.as_mut_ptr(), 4, true);
+        match hash.get("abc", &|id|id as *const Blob) {
             None => {},
             Some(_) => panic!("fail")
         }
@@ -259,42 +259,42 @@ mod tests {
     fn test_update() {
         unsafe {
             let mut mem = [0u8; 256];
-            let idx = Index::attach(mem.as_mut_ptr(), 4, true);
+            let hash = Hash::attach(mem.as_mut_ptr(), 4, true);
 
             let mut ram = [0u8; 144];
             let heap = Heap::attach(ram.as_mut_ptr(), ram.len());
             let blob1 = heap.allocates("blob", "blah").unwrap();
             let blob2 = heap.allocates("blob", "blech").unwrap();
 
-            idx.put(blob1, &|id| heap.rard(id)).unwrap();
-            idx.put(blob2, &|id| heap.rard(id)).unwrap();
+            hash.put(blob1, &|id| heap.rard(id)).unwrap();
+            hash.put(blob2, &|id| heap.rard(id)).unwrap();
 
-            let blob_out = idx.get("blob", &|id| heap.rard(id)).unwrap();
+            let blob_out = hash.get("blob", &|id| heap.rard(id)).unwrap();
             assert_eq!(blob2, blob_out.cast_mut());
             assert_eq!("blech".as_bytes(), (*blob_out).data().as_slice());
 
-            assert!(!idx.references(blob1, &|id| heap.rard(id)));
-            assert!(idx.references(blob2, &|id| heap.rard(id)));
+            assert!(!hash.references(blob1, &|id| heap.rard(id)));
+            assert!(hash.references(blob2, &|id| heap.rard(id)));
         }
     }
 
     #[test]
     fn test_report() {
-        let mut idx_mem = [0u8; 256];
-        let idx = Index::attach(idx_mem.as_mut_ptr(), 4, true);
+        let mut hash_mem = [0u8; 256];
+        let hash = Hash::attach(hash_mem.as_mut_ptr(), 4, true);
 
         let mut heap_mem = [0u8; 128];
         let heap = Heap::attach(heap_mem.as_mut_ptr(), heap_mem.len());
         let blob = heap.allocates("blob1", "blah").unwrap();
 
-        let report1 = idx.report(&|id| heap.rard(id));
+        let report1 = hash.report(&|id| heap.rard(id));
         assert_eq!(0, report1.used);
         assert_eq!(4, report1.free);
         assert_eq!(0, report1.overflows);
 
-        idx.put(blob, &|id| heap.rard(id)).unwrap();
+        hash.put(blob, &|id| heap.rard(id)).unwrap();
 
-        let report2 = idx.report(&|id| heap.rard(id));
+        let report2 = hash.report(&|id| heap.rard(id));
         assert_eq!(1, report2.used);
         assert_eq!(3, report2.free);
         assert_eq!(0, report2.overflows);
@@ -303,8 +303,8 @@ mod tests {
     #[test]
     fn test_overflow() {
         unsafe {
-            let mut idx_mem = [0u8; 256];
-            let idx = Index::attach(idx_mem.as_mut_ptr(), 4, true);
+            let mut hash_mem = [0u8; 256];
+            let hash = Hash::attach(hash_mem.as_mut_ptr(), 4, true);
             let mut heap_mem = [0u8; 256];
             let heap = Heap::attach(heap_mem.as_mut_ptr(), heap_mem.len());
             let blob1 = heap.allocates("blob", "abc").unwrap();
@@ -314,49 +314,49 @@ mod tests {
             let hash2 = (*blob2).hash();
             assert_ne!(hash1, hash2);
 
-            assert_eq!(1, hash1 % idx.bins);
-            assert_eq!(1, hash2 % idx.bins);
+            assert_eq!(1, hash1 % hash.bins);
+            assert_eq!(1, hash2 % hash.bins);
 
-            idx.put(blob1, &|id| heap.rard(id)).unwrap();
-            idx.put(blob2, &|id| heap.rard(id)).unwrap();
+            hash.put(blob1, &|id| heap.rard(id)).unwrap();
+            hash.put(blob2, &|id| heap.rard(id)).unwrap();
 
-            let report = idx.report(&|id|heap.rard(id));
+            let report = hash.report(&|id|heap.rard(id));
             assert_eq!(2, report.used);
             assert_eq!(2, report.free);
             assert_eq!(1, report.overflows);
 
-            assert_eq!("abc".as_bytes(), (*idx.get("blob", &|id|heap.rard(id)).unwrap()).data().as_slice());
-            assert_eq!("xyz".as_bytes(), (*idx.get("blobZ", &|id|heap.rard(id)).unwrap()).data().as_slice());
+            assert_eq!("abc".as_bytes(), (*hash.get("blob", &|id|heap.rard(id)).unwrap()).data().as_slice());
+            assert_eq!("xyz".as_bytes(), (*hash.get("blobZ", &|id|heap.rard(id)).unwrap()).data().as_slice());
         }
     }
 
     #[test]
     fn test_references() {
-        let mut idx_mem = [0u8; 256];
-        let idx = Index::attach(idx_mem.as_mut_ptr(), 4, true);
+        let mut hash_mem = [0u8; 256];
+        let hash = Hash::attach(hash_mem.as_mut_ptr(), 4, true);
 
         let mut heap_mem = [0u8; 144];
         let heap = Heap::attach(heap_mem.as_mut_ptr(), heap_mem.len());
         let blob1 = heap.allocates("blob", "blah").unwrap();
 
-        assert!(!idx.references(blob1, &|id| heap.rard(id)));
+        assert!(!hash.references(blob1, &|id| heap.rard(id)));
 
-        idx.put(blob1, &|id| heap.rard(id)).unwrap();
-        assert!(idx.references(blob1, &|id| heap.rard(id)));
+        hash.put(blob1, &|id| heap.rard(id)).unwrap();
+        assert!(hash.references(blob1, &|id| heap.rard(id)));
 
         let blob2 = heap.allocates("blob", "blech").unwrap();
-        idx.put(blob2, &|id| heap.rard(id)).unwrap();
+        hash.put(blob2, &|id| heap.rard(id)).unwrap();
 
-        assert!(!idx.references(blob1, &|id| heap.rard(id)));
-        assert!(idx.references(blob2, &|id| heap.rard(id)));
+        assert!(!hash.references(blob1, &|id| heap.rard(id)));
+        assert!(hash.references(blob2, &|id| heap.rard(id)));
     }
 
     #[test]
     fn test_load_store_id() {
-        let mut idx_mem = [0u8; 256];
-        let idx = Index::attach(idx_mem.as_mut_ptr(), 4, true);
-        assert_eq!(0, idx.load_id(0));
-        assert_eq!(0, idx.store_id(0, 1234));
-        assert_eq!(1234, idx.load_id(0));
+        let mut hash_mem = [0u8; 256];
+        let hash = Hash::attach(hash_mem.as_mut_ptr(), 4, true);
+        assert_eq!(0, hash.load_id(0));
+        assert_eq!(0, hash.store_id(0, 1234));
+        assert_eq!(1234, hash.load_id(0));
     }
 }

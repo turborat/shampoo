@@ -486,7 +486,7 @@ mod tests {
     use ShampooCondition::{AllocationFailure, NoImmediateGarbage};
 
     use crate::heap::{Blob, Heap, Metadata};
-    use crate::index::Index;
+    use crate::hash::Hash;
     use crate::shampoo::ShampooCondition;
     use crate::shampoo::ShampooCondition::Nothing;
     use crate::shmem::{inc_ptr, str, str_to_u64};
@@ -826,8 +826,8 @@ mod tests {
 
     #[test]
     fn test_gc_run() {
-        let mut idx_ram = [0u8; 216];
-        let idx = Index::attach(idx_ram.as_mut_ptr(), 32, true);
+        let mut hash_ram = [0u8; 216];
+        let hash = Hash::attach(hash_ram.as_mut_ptr(), 32, true);
 
         let mut heap_ram = [0u8; 256];
         let heap = Heap::attach(heap_ram.as_mut_ptr(), heap_ram.len());
@@ -835,14 +835,14 @@ mod tests {
         assert_eq!(232, heap.available());
         assert_eq!(1, heap.load_tail());
 
-        let is_garbage = &|id| !idx.references(id, |id| heap.rard(id));
+        let is_garbage = &|id| !hash.references(id, |id| heap.rard(id));
 
         let re_add = &mut|old_blob:*const Blob| {
             let name = unsafe { (*old_blob).name() };
             let data = unsafe { (*old_blob).data() };
             let ascii = unsafe { (*old_blob).ascii };
             let blob = heap.allocate(&name, &data, ascii)?;
-            idx.put(blob, &|id| heap.rard(id))?;
+            hash.put(blob, &|id| heap.rard(id))?;
             Ok(())
         };
 
@@ -850,11 +850,11 @@ mod tests {
 
         assert_eq!(Ok(0), heap.gc_run(is_garbage, re_add));
 
-        idx.put(heap.allocates("abc", "1").unwrap(), rard).unwrap();
-        idx.put(heap.allocates("def", "2").unwrap(), rard).unwrap();
-        idx.put(heap.allocates("def", "3").unwrap(), rard).unwrap();
+        hash.put(heap.allocates("abc", "1").unwrap(), rard).unwrap();
+        hash.put(heap.allocates("def", "2").unwrap(), rard).unwrap();
+        hash.put(heap.allocates("def", "3").unwrap(), rard).unwrap();
 
-        let report1 = heap.report(&|id| !idx.references(id, |id| heap.rard(id)));
+        let report1 = heap.report(&|id| !hash.references(id, |id| heap.rard(id)));
         assert_eq!(1, report1.frags);
         assert_eq!(56, report1.frag_bytes);
         assert_eq!(2, report1.blobs);
@@ -863,13 +863,13 @@ mod tests {
         assert_eq!(1, heap.load_tail());
 
         // check ids..
-        assert_eq!(1, unsafe { (*idx.get("abc", rard).unwrap()).id });
+        assert_eq!(1, unsafe { (*hash.get("abc", rard).unwrap()).id });
         assert_eq!(1, heap.load_tail());
-        assert_eq!(113, unsafe { (*idx.get("def", rard).unwrap()).id });
+        assert_eq!(113, unsafe { (*hash.get("def", rard).unwrap()).id });
 
         assert_eq!(Ok(56), heap.gc_run(is_garbage, re_add));
 
-        let report2 = heap.report(&|id| !idx.references(id, |id| heap.rard(id)));
+        let report2 = heap.report(&|id| !hash.references(id, |id| heap.rard(id)));
         assert_eq!(0, report2.frags);
         assert_eq!(0, report2.frag_bytes);
         assert_eq!(2, report2.blobs);
@@ -878,9 +878,9 @@ mod tests {
         assert_eq!(113, heap.load_tail());
 
         // check ids, abc is re-added, def not
-        assert_eq!(113, unsafe { (*idx.get("def", rard).unwrap()).id });
+        assert_eq!(113, unsafe { (*hash.get("def", rard).unwrap()).id });
         assert_eq!(113, heap.load_tail());
-        assert_eq!(169, unsafe { (*idx.get("abc", rard).unwrap()).id });
+        assert_eq!(169, unsafe { (*hash.get("abc", rard).unwrap()).id });
 
         assert_eq!(Ok(0), heap.gc_run(is_garbage, re_add));
     }

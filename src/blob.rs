@@ -1,7 +1,7 @@
 use std::mem::size_of;
 use std::thread::sleep;
 use std::time::Duration;
-use crate::index::Index;
+use crate::hash::Hash;
 
 use crate::shmem;
 use crate::shmem::{aload_u64, astore_u64, cas_u64, inc_ptr, str, str_to_u64};
@@ -128,7 +128,7 @@ impl Blob {
     }
 
     pub fn hash(&self) -> u32 {
-        Index::hash(&self.name())
+        Hash::hash(&self.name())
     }
 
     pub fn validate(&self) {
@@ -151,7 +151,7 @@ impl Blob {
 #[cfg(test)]
 mod tests {
     use crate::blob::BLOB_MAGIC;
-    use crate::index::{Blob, Index};
+    use crate::hash::{Blob, Hash};
     use crate::shmem::{str, str_to_u64};
 
     #[test]
@@ -194,7 +194,7 @@ mod tests {
         let ram = [0u8; 1 << 8];
         Blob::mark_pending(ram.as_ptr());
         let blob = Blob::init(ram.as_ptr(), "abc", &[], 0);
-        assert_eq!(Index::hash("abc"), unsafe { (*blob).hash() });
+        assert_eq!(Hash::hash("abc"), unsafe { (*blob).hash() });
         assert_eq!(2301573456, unsafe { (*blob).hash() });
     }
 
