@@ -10,13 +10,13 @@ copies by using shared memory for IPC.
 There are two data structures in (shared) memory: a hash table and circular heap. The 
 heap has two pointers - head and tail - that avoid locking via CAS. The head is
 used to allocate from, the tail is the starting point for garbage collection. The 
-hash is a super simple simple open addressing lookup table that I'm happy to accept 
-improvements to.
+hash is a super simple open addressing lookup table atm.
 
 For subscibe semantics one spins on a pointer then deferences it. No copying. 
 Compact memory. Minimal operations. Minimal latency. Damn high thoughput.
 
-Other features:
+Features
+* Minimal latency / high throughput
 * Handles data up to 4GB (only/sorry - i can change this lmk)
 * Lock-free / highly concurrent
 * O(1) scalability for all operations
