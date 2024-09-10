@@ -206,16 +206,20 @@ fn attach(size: size_t, own:bool) -> (c_int, *const c_void) {
     return unsafe {
         let fh = shm_open(c_char_ptr, oflags, S_IRUSR | S_IWUSR);
 
-        ensure(fh != 0, "!shm_open", true);
+        if fh == 0 {
+            panic!("shmem::attach::shm_open failed: {:?}", Error::last_os_error());
+        }
 
         let _ = ftruncate(fh, size as off_t);
 
-        let addr = mmap(ptr::null_mut(),
-                        size,
+        let addr = mmap(
+            ptr::null_mut(), size,
                         PROT_WRITE | PROT_READ,
                         MAP_SHARED, fh, 0);
 
-        ensure(addr as i64 != -1, "!mmap", true);
+        if addr as i64 == -1 {
+            panic!("shmem::attach::mmap failed: {:?}", Error::last_os_error());
+        }
 
         // todo: close file descriptor once region is mapped //
         // todo: delete region upon exit - munmap() //
@@ -225,18 +229,6 @@ fn attach(size: size_t, own:bool) -> (c_int, *const c_void) {
 
         (fh, addr)
     };
-}
-
-fn ensure(condition: bool, msg: &str, show_os_error: bool) {
-    if !condition {
-        if show_os_error {
-            eprintln!("{} os_error: {:?}", msg, Error::last_os_error());
-        }
-        else {
-            eprintln!("{}", msg);
-        }
-        exit(-1);
-    }
 }
 
 

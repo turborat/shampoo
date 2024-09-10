@@ -108,9 +108,8 @@ pub fn run(args: Vec<String>) {
 }
 
 fn usage() {
-    let msg =  "try:  put  [name]        <-v>      add named data via <stdin>
-      puts [name] [text] <-v>      add named text 
-      get  [name]        <-v>      get named data
+    let msg =  "try:  put    [name]      <-v>      add named data via <stdin>
+      get    [name]      <-v>      get named data
       heap               <-v>      display heap
       hash               <-v>      display hash
       show               <-v>      show key / value pairs
