@@ -33,6 +33,11 @@ pub fn run(args: Vec<String>) {
     }
 
     match args[1].as_str() {
+        "init" => {
+            let hash_size:usize = args[2].parse().unwrap();
+            let heap_size:usize = args[3].parse().unwrap();
+            Shampoo::init(hash_size, heap_size);
+        }
         "put" => {
             if args.len() < 3 {
                 die(-2, "missing arg: key)");

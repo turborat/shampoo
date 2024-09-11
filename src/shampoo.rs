@@ -46,10 +46,28 @@ impl Shampoo {
         let hash = Hash::attach(hash_base, hash_size);
 
         let heap_size = Shampoo::check_path("/dev/shm/SHAMPOO.heap");
-        let heap_base = attach("SHAMPOO.heap", hash_size as size_t, false);
+        let heap_base = attach("SHAMPOO.heap", heap_size as size_t, false);
         let heap = Heap::attach(heap_base, heap_size);
 
         Shampoo { heap, hash }
+    }
+
+    pub fn init(hash_size:usize, heap_size:usize) {
+        println!("usize::MAX:{}", usize::MAX);
+
+        let hash_base = attach("SHAMPOO.hash", hash_size, true);
+        Hash::init(hash_base, hash_size);
+
+        let heap_base = attach("SHAMPOO.heap", heap_size, true);
+        Heap::init(heap_base, heap_size);
+    }
+
+    fn check_path(fname:&str) -> u64 {
+        let path = Path::new(fname);
+        if !path.exists() {
+            die(-10, "shared memory not initialized. -- try: shampoo init <hash_size> <heap_size>");
+        }
+        std::fs::metadata(path).unwrap().len()
     }
 
     fn is_garbage(&self, blob:*const Blob) -> bool {
@@ -218,8 +236,12 @@ fn attach(name:&str, size: size_t, create:bool) -> *mut u8 {
         // todo: close file descriptor once region is mapped //
         // todo: delete region upon exit - munmap() //
 
-        let verb = if create { "created" } else { "attached to" };
-        puts(format!("{} shared memory segment {} @ {:?} ({} bytes)", verb, name, addr, size));
+        if create {
+            println!("Initialized shared memory segment {} @{:x} ({} bytes)", name, addr as u64, size);
+        }
+        else {
+            puts(format!("shmem::attach::created segment {} @{:x} ({} bytes)", name, addr as u64, size));
+        }
 
         addr as *mut u8
     };
