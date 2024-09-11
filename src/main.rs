@@ -46,7 +46,7 @@ pub fn run(args: Vec<String>) {
                 stdin().read_to_end(&mut buf).unwrap();
             };
 
-            match Shampoo::init().put(&args[2], &buf) {
+            match Shampoo::attach().put(&args[2], &buf) {
                 Ok(_) => println!("put {}", mag_fmt(buf.len() as u64)),
                 Err(ShampooCondition::AllocationFailure) => die(-7, "AllocationFailure -- Forget to run gc??"),
                 Err(err) => die(-8, &format!("{:?}", err))
@@ -56,18 +56,18 @@ pub fn run(args: Vec<String>) {
             if args.len() < 3 {
                 die(-4, "get requires an additional argument, key");
             }
-            match Shampoo::init().get(args[2].as_str()) {
+            match Shampoo::attach().get(args[2].as_str()) {
                 None => eprintln!("<nothing>"),
                 Some(data) => println!("{}", str(data.as_ptr(), data.len()))
             };
         },
-        "heap"      => Shampoo::init().show_heap(),
-        "hash"      => Shampoo::init().show_hash(),
-        "show"      => Shampoo::init().show(),
-        "dump"      => Shampoo::init().dump(),
-        "map"       => Shampoo::init().map(),
+        "heap"      => Shampoo::attach().show_heap(),
+        "hash"      => Shampoo::attach().show_hash(),
+        "show"      => Shampoo::attach().show(),
+        "dump"      => Shampoo::attach().dump(),
+        "map"       => Shampoo::attach().map(),
         "gc" => {
-            match Shampoo::init().gc() {
+            match Shampoo::attach().gc() {
                 Err(err) => die(-6, &format!("{:?}", err)),
                 _ => panic!("this should never happen")
             };
@@ -81,7 +81,7 @@ pub fn run(args: Vec<String>) {
                     .name(name.clone())
                     .spawn(move || {
                         println!("thread {:?}", thread::current());
-                        let shampoo = Shampoo::init();
+                        let shampoo = Shampoo::attach();
                         let mut x = 0;
                         loop {
                             match shampoo.put("abc", &format!("{}", x).as_bytes()) {

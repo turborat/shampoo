@@ -10,7 +10,7 @@ use std::sync::atomic::AtomicBool;
 use std::thread::sleep;
 use std::time::{Duration};
 
-use libc::{c_char, c_int, c_void, ftruncate, mmap, off_t, PROT_READ, shm_open, size_t};
+use libc::{c_char, ftruncate, mmap, off_t, PROT_READ, shm_open, size_t, usleep};
 use libc::{O_CREAT, O_EXCL, O_RDWR, S_IRUSR, S_IWUSR};
 use libc::{MAP_SHARED, PROT_WRITE};
 
@@ -40,19 +40,14 @@ pub struct Shampoo {
 }
 
 impl Shampoo {
-    pub fn init() -> Self {
-        let segment_size = 10*1024;
-        // todo: make this based on atomic swap results
-        let own = !Path::new("/dev/shm/SHAMPOO").exists();
-        let base = {
-            let (_fh, c_ptr) = attach(segment_size, own);
-            c_ptr as *mut u8
-        };
+    pub fn attach() -> Self {
+        let hash_size = Shampoo::check_path("/dev/shm/SHAMPOO.hash");
+        let hash_base = attach("SHAMPOO.hash", hash_size as size_t, false);
+        let hash = Hash::attach(hash_base, hash_size);
 
-        let hash = Hash::attach(base, 64, own);
-        let heap_start = unsafe { base.add(hash.len()) } ;
-        let heap_size = segment_size - (heap_start as usize - base as usize);
-        let heap = Heap::attach(heap_start, heap_size);
+        let heap_size = Shampoo::check_path("/dev/shm/SHAMPOO.heap");
+        let heap_base = attach("SHAMPOO.heap", hash_size as size_t, false);
+        let heap = Heap::attach(heap_base, heap_size);
 
         Shampoo { heap, hash }
     }
@@ -197,11 +192,10 @@ impl Shampoo {
     }
 }
 
-fn attach(size: size_t, own:bool) -> (c_int, *const c_void) {
-    let name = "/SHAMPOO";
+fn attach(name:&str, size: size_t, create:bool) -> *mut u8 {
     let c_string = CString::new(name.as_bytes()).expect("cvt!");
     let c_char_ptr: *const c_char = c_string.as_ptr();
-    let oflags = if own { O_CREAT | O_EXCL | O_RDWR } else { O_RDWR };
+    let oflags = if create { O_CREAT | O_EXCL | O_RDWR } else { O_RDWR };
 
     return unsafe {
         let fh = shm_open(c_char_ptr, oflags, S_IRUSR | S_IWUSR);
@@ -224,11 +218,12 @@ fn attach(size: size_t, own:bool) -> (c_int, *const c_void) {
         // todo: close file descriptor once region is mapped //
         // todo: delete region upon exit - munmap() //
 
-        let verb = if own { "created" } else { "attached to" };
+        let verb = if create { "created" } else { "attached to" };
         puts(format!("{} shared memory segment {} @ {:?} ({} bytes)", verb, name, addr, size));
 
-        (fh, addr)
+        addr as *mut u8
     };
 }
+
 
 

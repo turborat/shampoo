@@ -1,4 +1,4 @@
-use std::{mem};
+use std::mem;
 
 use xxhash_rust::xxh3::xxh3_64;
 
@@ -7,7 +7,7 @@ use ShampooCondition::{BucketCollision, EndOfSegment};
 pub use crate::heap::Blob;
 use crate::util::puts;
 use crate::shampoo::ShampooCondition;
-use crate::shmem::{astore_u64, aload_u64, cas_u64x};
+use crate::shmem::{aload_u64, astore_u64, cas_u64x};
 use crate::util::Matrix;
 
 #[repr(C)]
@@ -29,18 +29,18 @@ pub struct IndexReport {
 }
 
 impl Hash {
-    pub fn attach(base: *mut u8, bins:u32, initialize:bool) -> Self {
-        let hash = Hash { base: base as *mut Entry, bins };
+    pub fn attach(base:*const u8, hash_size:u64) -> Self {
+        let bins = hash_size / 8;
+        puts(format!("init_hash @{:x} {} bins", base as u64, bins));
+        assert_ne!(0, bins, "zero bins {}, {}", bins, hash_size);
+        Hash { base: base as *mut Entry, bins: bins as u32 }
+    }
 
-        if initialize {
-            puts(format!("index::init @{:x} {} bins", base as u64, bins));
-            // leave all bins pointing to 0
-        }
-        else {
-            puts(format!("index::attach @{:x}, {} bins", base as u64, bins));
-        }
-
-        hash
+    pub fn init(base:*const u8, hash_size:usize) -> Self {
+        let bins = hash_size / 8;
+        puts(format!("hash::init @{:x} {} bins", base as u64, bins));
+        assert_ne!(0, bins, "zero bins");
+        Hash { base: base as *mut Entry, bins: bins as u32 }
     }
 
     pub fn put<F>(&self, blob:*const Blob, rard:&F) -> Result<*const Blob, ShampooCondition>
@@ -48,6 +48,7 @@ impl Hash {
     {
         let name = unsafe { (*blob).name() } ;
         let xx = unsafe { (*blob).hash() };
+        assert_ne!(0, self.bins);
         let mut bin = xx % self.bins;
 
         puts(format!("xxhash({}) -> {:x} % {} = bin {}", name, xx, self.bins, bin));
@@ -73,14 +74,14 @@ impl Hash {
 
                 // is the name the same?
                 if (*blob).name() == (*prev_blob).name() {
-                    puts("index::put::performing update".to_string());
+                    puts("hash::put::performing update".to_string());
                     let prev = self.store_id(bin, (*blob).id);
                     return Ok(prev as *const Blob);
                 }
 
                 // try next bin
                 bin += 1;
-                puts(format!("index::put::overflowing to bin {}", bin));
+                puts(format!("hash::put::overflowing to bin {}", bin));
             }
         }
     }
@@ -95,14 +96,14 @@ impl Hash {
         unsafe {
             loop {
                 if bin >= self.bins {
-                    puts("index::get::bins depleted, returning".to_string());
+                    puts("hash::get::bins depleted, returning".to_string());
                     return None;
                 }
 
                 let entry = self.base.add(bin as usize);
 
                 if (*entry).id == 0 {
-                    puts("index::get::bin empty, returning".to_string());
+                    puts("hash::get::bin empty, returning".to_string());
                     return None;
                 }
 
@@ -110,7 +111,7 @@ impl Hash {
                 (*blob).validate();
 
                 if (*blob).hash() % self.bins != orig_bin {
-                    puts("index::get::overflow over, returning".to_string());
+                    puts("hash::get::overflow over, returning".to_string());
                     return None;
                 }
 
@@ -225,18 +226,19 @@ impl Hash {
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::blob::{Blob};
-    use crate::heap::Heap;
+pub(crate) mod tests {
+    use heap::tests::init_heap;
+    use crate::blob::Blob;
     use crate::hash::Hash;
+    use crate::heap;
 
     #[test]
     fn test_put_get() {
-        let mut hash_mem = [0u8; 256];
-        let hash = Hash::attach(hash_mem.as_mut_ptr(), 4, true);
+        let hash_mem = [0u8; 256];
+        let hash = init_hash(&hash_mem, 4);
 
-        let mut heap_mem = [0u8; 128];
-        let heap = Heap::attach(heap_mem.as_mut_ptr(), heap_mem.len());
+        let heap_mem = [0u8; 128];
+        let heap = init_heap(&heap_mem);
         let blob_in = heap.allocates("blob1", "blah").unwrap();
 
         hash.put(blob_in, &|id| heap.rard(id)).unwrap();
@@ -247,8 +249,8 @@ mod tests {
 
     #[test]
     fn test_get_nothing() {
-        let mut mem = [0u8; 256];
-        let hash = Hash::attach(mem.as_mut_ptr(), 4, true);
+        let mem = [0u8; 256];
+        let hash = init_hash(&mem, 4);
         match hash.get("abc", &|id|id as *const Blob) {
             None => {},
             Some(_) => panic!("fail")
@@ -258,11 +260,11 @@ mod tests {
     #[test]
     fn test_update() {
         unsafe {
-            let mut mem = [0u8; 256];
-            let hash = Hash::attach(mem.as_mut_ptr(), 4, true);
+            let mem = [0u8; 256];
+            let hash = init_hash(&mem, 4);
 
-            let mut ram = [0u8; 144];
-            let heap = Heap::attach(ram.as_mut_ptr(), ram.len());
+            let ram = [0u8; 144];
+            let heap = init_heap(&ram);
             let blob1 = heap.allocates("blob", "blah").unwrap();
             let blob2 = heap.allocates("blob", "blech").unwrap();
 
@@ -278,13 +280,19 @@ mod tests {
         }
     }
 
+    pub fn init_hash(mem:&[u8], bins:u64) -> Hash {
+        assert!(bins * 8 <= mem.len() as u64);
+        Hash::init(mem.as_ptr(), mem.len());
+        Hash::attach(mem.as_ptr(), bins * 8)
+    }
+
     #[test]
     fn test_report() {
-        let mut hash_mem = [0u8; 256];
-        let hash = Hash::attach(hash_mem.as_mut_ptr(), 4, true);
+        let hash_mem = [0u8; 256];
+        let hash = init_hash(&hash_mem, 4);
 
-        let mut heap_mem = [0u8; 128];
-        let heap = Heap::attach(heap_mem.as_mut_ptr(), heap_mem.len());
+        let heap_mem = [0u8; 128];
+        let heap = init_heap(&heap_mem);
         let blob = heap.allocates("blob1", "blah").unwrap();
 
         let report1 = hash.report(&|id| heap.rard(id));
@@ -303,10 +311,10 @@ mod tests {
     #[test]
     fn test_overflow() {
         unsafe {
-            let mut hash_mem = [0u8; 256];
-            let hash = Hash::attach(hash_mem.as_mut_ptr(), 4, true);
-            let mut heap_mem = [0u8; 256];
-            let heap = Heap::attach(heap_mem.as_mut_ptr(), heap_mem.len());
+            let hash_mem = [0u8; 256];
+            let hash = init_hash(&hash_mem, 4);
+            let heap_mem = [0u8; 256];
+            let heap = init_heap(&heap_mem);
             let blob1 = heap.allocates("blob", "abc").unwrap();
             let blob2 = heap.allocates("blobZ", "xyz").unwrap();
 
@@ -332,11 +340,11 @@ mod tests {
 
     #[test]
     fn test_references() {
-        let mut hash_mem = [0u8; 256];
-        let hash = Hash::attach(hash_mem.as_mut_ptr(), 4, true);
+        let hash_mem = [0u8; 256];
+        let hash = init_hash(&hash_mem, 4);
 
-        let mut heap_mem = [0u8; 144];
-        let heap = Heap::attach(heap_mem.as_mut_ptr(), heap_mem.len());
+        let heap_mem = [0u8; 144];
+        let heap = init_heap(&heap_mem);
         let blob1 = heap.allocates("blob", "blah").unwrap();
 
         assert!(!hash.references(blob1, &|id| heap.rard(id)));
@@ -353,8 +361,8 @@ mod tests {
 
     #[test]
     fn test_load_store_id() {
-        let mut hash_mem = [0u8; 256];
-        let hash = Hash::attach(hash_mem.as_mut_ptr(), 4, true);
+        let hash_mem = [0u8; 256];
+        let hash = init_hash(&hash_mem, 4);
         assert_eq!(0, hash.load_id(0));
         assert_eq!(0, hash.store_id(0, 1234));
         assert_eq!(1234, hash.load_id(0));

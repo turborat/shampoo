@@ -57,7 +57,7 @@ impl fmt::Display for HeapReport {
 }
 
 impl Heap {
-    pub fn attach(base: *const u8, capacity:usize) -> Heap {
+    pub fn attach(base: *const u8, capacity:u64) -> Heap {
         if base as u64 % 8 != 0 {
             panic!("not a multiple of 8: {:?}", base);
         }
@@ -67,15 +67,34 @@ impl Heap {
         let boh = base as u64 + meta_len;
         let eoh = base as u64 + capacity as u64;
 
-        let heap = Heap { capacity: capacity - meta_len as usize, meta, boh, eoh };
+        puts(format!("init_heap @{:x} capacity {}", meta as u64, mag_fmt(capacity as u64)));
+
+        let heap = Heap { capacity: (capacity - meta_len) as usize, meta, boh, eoh };
         assert_eq!(capacity as u64 - meta_len, eoh - boh);
-        heap.init();
+
+        heap.validate();
 
         if VERBOSE.load(Relaxed) {
             heap.info();
         }
 
         heap
+    }
+
+    pub fn init(base: *const u8, capacity:usize) {
+        let meta = base as *mut Metadata;
+
+        if !cas_u64("heap/magic", unsafe { (*meta).magic.as_mut_ptr() } as *const u64, 0, str_to_u64("HEAP")) {
+            panic!("wtf")
+        }
+
+        assert_eq!(0, unsafe { (*meta).head }, "heap unclean");
+        assert_eq!(0, unsafe { (*meta).tail }, "heap unclean");
+
+        unsafe { (*meta).head = 1 };
+        unsafe { (*meta).tail = 1 };
+
+        puts(format!("heap::init @{:x} capacity {}", meta as u64, mag_fmt(capacity as u64)));
     }
 
     pub fn validate(&self) {
@@ -99,22 +118,6 @@ impl Heap {
         unsafe {
             self.walk(&mut|blob| (*blob).validate());
         }
-    }
-
-    fn init(&self) {
-        unsafe {
-            // to keep the logs clean
-            let verb = if (*self.meta).magic == [0u8;4] && cas_u64("heap/magic", (*self.meta).magic.as_mut_ptr() as *const u64, 0, str_to_u64("HEAP")) {
-                (*self.meta).head = 1;
-                (*self.meta).tail = 1;
-                "init"
-            } else {
-                "attach"
-            };
-            puts(format!("heap::{} @{:x}, capacity {}", verb, self.meta as u64, self.capacity));
-        }
-
-        self.validate();
     }
 
     fn find_block(&self, requested_len:usize) -> Result<(u64, u64), ShampooCondition> {
@@ -278,7 +281,6 @@ impl Heap {
         }
     }
 
-    // todo: test this
     pub fn gc_run<F,G>(&self, is_garbage:&F, re_add:&G) -> Result<usize, ShampooCondition>
         where F : Fn(*const Blob) -> bool,
               G : Fn(*const Blob) -> Result<(), ShampooCondition>
@@ -482,19 +484,20 @@ impl Heap {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
+    use hash::tests::init_hash;
     use ShampooCondition::{AllocationFailure, NoImmediateGarbage};
+    use crate::hash;
 
     use crate::heap::{Blob, Heap, Metadata};
-    use crate::hash::Hash;
     use crate::shampoo::ShampooCondition;
     use crate::shampoo::ShampooCondition::Nothing;
     use crate::shmem::{inc_ptr, str, str_to_u64};
 
     #[test]
     fn test_allocate() {
-        let mut ram = [0u8; 512];
-        let heap = Heap::attach(ram.as_mut_ptr(), ram.len());
+        let ram = [0u8; 512];
+        let heap = init_heap(&ram);
 
         let blob1 = heap.allocates("blah", "BLAH").unwrap();
         unsafe { assert!(eq(4, (*blob1).magic.as_ptr(), "BLOB".as_ptr())) }
@@ -517,8 +520,8 @@ mod tests {
 
     #[test]
     fn test_report() {
-        let mut ram = [0u8; 512];
-        let heap = Heap::attach(ram.as_mut_ptr(), ram.len());
+        let ram = [0u8; 512];
+        let heap = init_heap(&ram);
 
         let _blob1 = heap.allocates("blah", "BLAH").unwrap();
         let blob2 = heap.allocates("blop", "BLOP").unwrap();
@@ -547,7 +550,7 @@ mod tests {
         assert_eq!(24, Metadata::size_of());
 
         let mut ram = [0u8; 512];
-        let heap = Heap::attach(ram.as_mut_ptr(), ram.len());
+        let heap = init_heap(&ram);
         assert_ne!(heap.boh, 0);
         assert_ne!(heap.eoh, 0);
         unsafe { assert_eq!(1, (*heap.meta).head); }
@@ -601,17 +604,19 @@ mod tests {
     #[test]
     fn test_init_sanity() {
         let mut ram = [0u8; 512];
-        let heap = Heap::attach(ram.as_mut_ptr(), ram.len());
-        let meta = ram.as_mut_ptr() as *const Metadata;
+        let meta = ram.as_ptr() as *const Metadata;
 
-        assert_eq!(heap.meta as u64, meta as u64);
+        Heap::init(ram.as_ptr(), ram.len());
         unsafe { assert_eq!("HEAP".as_bytes(), (*meta).magic); }
-        assert_eq!(488, heap.capacity);
-        assert_ne!(heap.boh, 0);
         unsafe { assert_eq!(1, (*meta).head); }
         unsafe { assert_eq!(1, (*meta).tail); }
 
-        let heap2 = Heap::attach(ram.as_mut_ptr(), ram.len());
+        let heap = Heap::attach(ram.as_ptr(), ram.len() as u64);
+        assert_eq!(heap.meta as u64, meta as u64);
+        assert_eq!(488, heap.capacity);
+        assert_ne!(heap.boh, 0);
+
+        let heap2 = Heap::attach(ram.as_mut_ptr(), ram.len() as u64);
         assert_eq!(heap.capacity, heap2.capacity);
         assert_eq!(heap.meta, heap2.meta);
         assert_eq!(heap.boh, heap2.boh);
@@ -621,8 +626,8 @@ mod tests {
 
     #[test]
     fn test_find_block_scenario() {
-        let mut ram = [0u8; 256];
-        let heap = Heap::attach(ram.as_mut_ptr(), ram.len());
+        let ram = [0u8; 256];
+        let heap = init_heap(&ram);
 
         assert_eq!(232, heap.available());
         assert_eq!((1, 96), heap.find_block(96).unwrap());
@@ -650,8 +655,8 @@ mod tests {
 
     #[test]
     fn test_find_block_pending() {
-        let mut ram = [0u8; 256];
-        let heap = Heap::attach(ram.as_mut_ptr(), ram.len());
+        let ram = [0u8; 256];
+        let heap = init_heap(&ram);
 
         assert_eq!((1, 96), heap.find_block(96).unwrap());
 
@@ -661,8 +666,8 @@ mod tests {
 
     #[test]
     fn test_find_block_padding() {
-        let mut ram = [0u8; 288];
-        let heap = Heap::attach(ram.as_mut_ptr(), ram.len());
+        let ram = [0u8; 288];
+        let heap = init_heap(&ram);
         assert_eq!(264, heap.available());
 
         let b1 = heap.allocate("b1", &[0u8;40], false).unwrap();
@@ -698,7 +703,7 @@ mod tests {
     #[test]
     fn test_paranioa_can_delete() {
         let mut ram = [0u8;128];
-        let heap = Heap::attach(ram.as_mut_ptr(), ram.len());
+        let heap = init_heap(&ram);
 
         // od(ram.as_mut_ptr(), ram.len());
         unsafe { println!("HEAP {:x}", *(ram.as_ptr().add(8) as *const u64)); }
@@ -725,8 +730,8 @@ mod tests {
 
     #[test]
     fn test_available() {
-        let mut ram = [0u8; 160];
-        let heap = Heap::attach(ram.as_mut_ptr(), ram.len());
+        let ram = [0u8; 160];
+        let heap = init_heap(&ram);
         assert_eq!(136, heap.available());
 
         assert_eq!(64, heap.find_block(64).unwrap().1);
@@ -747,8 +752,8 @@ mod tests {
 
     #[test]
     fn test_walk() {
-        let mut ram = [0u8; 240];
-        let heap = Heap::attach(ram.as_mut_ptr(), ram.len());
+        let ram = [0u8; 240];
+        let heap = init_heap(&ram);
 
         heap.walk(&mut |_blob| panic!());
 
@@ -799,8 +804,8 @@ mod tests {
 
     #[test]
     fn test_walk_only_garbage() {
-        let mut ram = [0u8; 216];
-        let heap = Heap::attach(ram.as_mut_ptr(), ram.len());
+        let ram = [0u8; 216];
+        let heap = init_heap(&ram);
         heap.allocate("test1", &[3u8;12], false).unwrap();
         heap.allocate("test2", &[3u8;12], false).unwrap();
         heap.print(&|_blob| true);
@@ -808,8 +813,8 @@ mod tests {
 
     #[test]
     fn test_gc_tail() {
-        let mut ram = [0u8; 216];
-        let heap = Heap::attach(ram.as_mut_ptr(), ram.len());
+        let ram = [0u8; 216];
+        let heap = init_heap(&ram);
         assert_eq!(192, heap.available());
         assert_eq!(1, heap.load_tail());
         assert_eq!(Err(Nothing), heap.gc_tail(&|_blob|false));
@@ -826,11 +831,11 @@ mod tests {
 
     #[test]
     fn test_gc_run() {
-        let mut hash_ram = [0u8; 216];
-        let hash = Hash::attach(hash_ram.as_mut_ptr(), 32, true);
+        let hash_ram = [0u8; 216];
+        let hash = init_hash(&hash_ram, 16);
 
-        let mut heap_ram = [0u8; 256];
-        let heap = Heap::attach(heap_ram.as_mut_ptr(), heap_ram.len());
+        let heap_ram = [0u8; 256];
+        let heap = init_heap(&heap_ram);
 
         assert_eq!(232, heap.available());
         assert_eq!(1, heap.load_tail());
@@ -852,6 +857,7 @@ mod tests {
 
         hash.put(heap.allocates("abc", "1").unwrap(), rard).unwrap();
         hash.put(heap.allocates("def", "2").unwrap(), rard).unwrap();
+        heap.print(is_garbage);
         hash.put(heap.allocates("def", "3").unwrap(), rard).unwrap();
 
         let report1 = heap.report(&|id| !hash.references(id, |id| heap.rard(id)));
@@ -899,5 +905,10 @@ mod tests {
             }
         }
         return true;
+    }
+
+    pub fn init_heap(mem:&[u8]) -> Heap {
+        Heap::init(mem.as_ptr(), mem.len());
+        Heap::attach(mem.as_ptr(), mem.len() as u64)
     }
 }
