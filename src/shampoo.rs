@@ -7,6 +7,7 @@ use std::path::Path;
 use std::process::exit;
 use std::ptr;
 use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::Relaxed;
 use std::thread::sleep;
 use std::time::{Duration};
 
@@ -35,8 +36,8 @@ pub enum ShampooCondition {
 }
 
 pub struct Shampoo {
-    heap: Heap,
-    hash: Hash
+    pub heap: Heap,
+    pub hash: Hash
 }
 
 impl Shampoo {
@@ -98,6 +99,13 @@ impl Shampoo {
         Some(data)
     }
 
+    pub fn info(&self) {
+        println!("{:?}", &self.hash.report(&|id| self.rard(id)));
+        println!("{}", &self.heap.report(&|blob|self.is_garbage(blob)));
+        self.heap.info();
+
+    }
+
     pub fn show_hash(&self) {
         println!("{:?}", &self.hash.report(&|id| self.rard(id)));
         self.hash.print(|id| self.rard(id));
@@ -105,11 +113,13 @@ impl Shampoo {
 
     pub fn show_heap(&self) {
         println!("{}", self.heap.report(&|blob|self.is_garbage(blob)));
-        // self.heap.info();
+        if VERBOSE.load(Relaxed) {
+            self.heap.info();
+        }
         self.heap.print(&|blob|self.is_garbage(blob));
     }
 
-    pub fn show(&self) {
+    pub fn show_pairs(&self) {
         let mut mat = Matrix::new();
         self.heap.walk(&mut |blob:*const Blob| {
             unsafe {

@@ -22,7 +22,7 @@ pub struct Hash {
 }
 
 #[derive(Debug)]
-pub struct IndexReport {
+pub struct HashReport {
     used: u32,
     free: u32,
     overflows: u32
@@ -195,10 +195,10 @@ impl Hash {
         }
     }
 
-    pub fn report<F>(&self, rard:&F) -> IndexReport
+    pub fn report<F>(&self, rard:&F) -> HashReport
     where F : Fn(u64) -> *const Blob
     {
-        let mut report = IndexReport{ used:0, free:0, overflows:0 };
+        let mut report = HashReport { used:0, free:0, overflows:0 };
 
         unsafe {
             for bin in 0..self.bins {

@@ -33,6 +33,9 @@ pub fn run(args: Vec<String>) {
     }
 
     match args[1].as_str() {
+        "info" => {
+            Shampoo::attach().info();
+        }
         "init" => {
             let hash_size:usize = args[2].parse().unwrap();
             let heap_size:usize = args[3].parse().unwrap();
@@ -68,7 +71,7 @@ pub fn run(args: Vec<String>) {
         },
         "heap"      => Shampoo::attach().show_heap(),
         "hash"      => Shampoo::attach().show_hash(),
-        "show"      => Shampoo::attach().show(),
+        "show"      => Shampoo::attach().show_pairs(),
         "dump"      => Shampoo::attach().dump(),
         "map"       => Shampoo::attach().map(),
         "gc" => {
@@ -113,14 +116,16 @@ pub fn run(args: Vec<String>) {
 }
 
 fn usage() {
-    let msg =  "try:  put    [name]      <-v>      add named data via <stdin>
-      get    [name]      <-v>      get named data
-      heap               <-v>      display heap
-      hash               <-v>      display hash
-      show               <-v>      show key / value pairs
-      dump               <-v>      dump raw heap data
-      map                <-v>      render heap map
-      gc                 <-v>      start garbage collector\n";
+    let msg =  "try:  init [hash-size] [heap-size] (-v)
+      put  [name]                  (-v)      add named data via <stdin>
+      get  [name]                  <-v>      get named data
+      info                         (-v)      display infomercials
+      heap                         <-v>      display heap
+      hash                         <-v>      display hash
+      show                         <-v>      show key / value pairs
+      dump                         <-v>      dump raw heap data
+      map                          <-v>      render heap map
+      gc                           <-v>      start garbage collector\n";
     die(-1, msg);
 }
 
