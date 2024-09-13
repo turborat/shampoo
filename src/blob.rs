@@ -19,8 +19,7 @@ pub struct Blob {
     pub name_len: usize,
     pub data_len: usize,
     pub id: u64,
-    pub ascii:bool,
-    pad: [u8;7]
+    pad: [u8;8]
 }
 
 impl Blob {
@@ -38,7 +37,6 @@ impl Blob {
             (*blob).data_len = data.len();
             (*blob).len = len + pad;
             (*blob).id = id;
-            (*blob).ascii = false;
 
             assert_eq!(0, (*blob).len % 8);
 
@@ -118,12 +116,12 @@ impl Blob {
         vec
     }
 
-    // todo: test me
     pub fn data_view(&self) -> String {
-        if self.ascii {
-            String::from_utf8(self.data()).unwrap()
+        let data = self.data();
+        if data.is_ascii() {
+            format!("\"{}\"", String::from_utf8(data).unwrap())
         } else {
-            format!("{}", mag_fmt(self.len as u64))
+            mag_fmt(data.len() as u64)
         }
     }
 
@@ -175,7 +173,6 @@ mod tests {
             assert_eq!(123, (*blob).id); // obvs not realistic
             assert_eq!("bob", (*blob).name());
             assert_eq!(vec![9u8; 16], (*blob).data());
-            assert_eq!(false, (*blob).ascii);
         }
     }
 

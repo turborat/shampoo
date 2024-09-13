@@ -65,12 +65,12 @@ impl Heap {
         let meta = base as *mut Metadata;
         let meta_len = size_of::<Metadata>() as u64;
         let boh = base as u64 + meta_len;
-        let eoh = base as u64 + capacity as u64;
+        let eoh = base as u64 + capacity;
 
-        puts(format!("init_heap @{:x} capacity {}", meta as u64, mag_fmt(capacity as u64)));
+        puts(format!("init_heap @{:x} capacity {}", meta as u64, mag_fmt(capacity)));
 
         let heap = Heap { capacity: (capacity - meta_len) as usize, meta, boh, eoh };
-        assert_eq!(capacity as u64 - meta_len, eoh - boh);
+        assert_eq!(capacity - meta_len, eoh - boh);
 
         heap.validate();
 
@@ -115,9 +115,14 @@ impl Heap {
                 (*tail_blob).validate();
             }
         }
-        unsafe {
-            self.walk(&mut|blob| (*blob).validate());
-        }
+
+        let mut n = 0;
+        self.walk(&mut|blob|  {
+            unsafe { (*blob).validate() };
+            n+=1;
+        });
+
+        puts(format!("heap::validate::{} blobs OK", n));
     }
 
     fn find_block(&self, requested_len:usize) -> Result<(u64, u64), ShampooCondition> {
@@ -217,11 +222,7 @@ impl Heap {
         format!("{:x}:{}", self.rard(id) as u64, id)
     }
 
-    pub fn allocates(&self, name:&str, txt:&str) -> Result<*mut Blob, ShampooCondition> {
-        self.allocate(name, txt.as_bytes(), true)
-    }
-
-    pub fn allocate(&self, name:&str, data:&[u8], ascii:bool) -> Result<*mut Blob, ShampooCondition> {
+    pub fn allocate(&self, name:&str, data:&[u8]) -> Result<*mut Blob, ShampooCondition> {
         unsafe {
             let mut total_len = Blob::header_len() + name.len() + data.len();
             puts(format!("heap::allocate::['{}' -> {} bytes] = {} bytes total", name, data.len(), total_len));
@@ -238,7 +239,6 @@ impl Heap {
             };
 
             let blob = Blob::init(self.rard(id) as *const u8, name, data, id);
-            (*blob).ascii = ascii;
             (*blob).len = actual_len as usize;
 
             (*blob).mark_ready();
@@ -499,7 +499,7 @@ pub mod tests {
         let ram = [0u8; 512];
         let heap = init_heap(&ram);
 
-        let blob1 = heap.allocates("blah", "BLAH").unwrap();
+        let blob1 = heap.allocate("blah", "BLAH".as_bytes()).unwrap();
         unsafe { assert!(eq(4, (*blob1).magic.as_ptr(), "BLOB".as_ptr())) }
         unsafe { assert_eq!(56, (*blob1).len) }
         unsafe { assert_eq!(4, (*blob1).name_len) }
@@ -507,7 +507,7 @@ pub mod tests {
         unsafe { assert_eq!("blah", (*blob1).name()) }
         unsafe { assert_eq!("BLAH".as_bytes(), (*blob1).data()) }
 
-        let blob2 = heap.allocates("floped", "datalorder").unwrap();
+        let blob2 = heap.allocate("floped", "datalorder".as_bytes()).unwrap();
         unsafe { assert!(eq(4, (*blob2).magic.as_ptr(), "BLOB".as_ptr())) }
         unsafe { assert_eq!(64, (*blob2).len) }
         unsafe { assert_eq!(6, (*blob2).name_len) }
@@ -523,9 +523,9 @@ pub mod tests {
         let ram = [0u8; 512];
         let heap = init_heap(&ram);
 
-        let _blob1 = heap.allocates("blah", "BLAH").unwrap();
-        let blob2 = heap.allocates("blop", "BLOP").unwrap();
-        let _blob3 = heap.allocates("blarf", "BLxx").unwrap();
+        let _blob1 = heap.allocate("blah", "BLAH".as_bytes()).unwrap();
+        let blob2 = heap.allocate("blop", "BLOP".as_bytes()).unwrap();
+        let _blob3 = heap.allocate("blarf", "BLxx".as_bytes()).unwrap();
 
         let report_b = heap.report(&|_blob| false);
         assert_eq!(3, report_b.blobs);
@@ -670,23 +670,23 @@ pub mod tests {
         let heap = init_heap(&ram);
         assert_eq!(264, heap.available());
 
-        let b1 = heap.allocate("b1", &[0u8;40], false).unwrap();
+        let b1 = heap.allocate("b1", &[0u8;40]).unwrap();
         assert_eq!(96, unsafe { (*b1).len });
         assert_eq!(168, heap.available());
 
-        let b2 = heap.allocate("b2", &[0u8;40], false).unwrap();
+        let b2 = heap.allocate("b2", &[0u8;40]).unwrap();
         assert_eq!(96, unsafe { (*b2).len });
         assert_eq!(72, heap.available());
 
         assert_eq!(unsafe { (*b2).id + (*b2).len as u64 }, unsafe { (*heap.meta).head });
-        assert_eq!(Err(AllocationFailure), heap.allocate("b3", &[0u8;40], false));
+        assert_eq!(Err(AllocationFailure), heap.allocate("b3", &[0u8;40]));
 
         heap.print(&|_blob|true);
 
         assert_eq!(96, heap.gc_tail(&|_blob|true).unwrap());
         assert_eq!(72 + 96, heap.available());
 
-        let b3 = heap.allocate("b3", &[0u8;40], false).unwrap();
+        let b3 = heap.allocate("b3", &[0u8;40]).unwrap();
         assert_eq!(96, unsafe { (*b3).len });
         assert_eq!(0, heap.available());
         assert_eq!(b1, b3);
@@ -716,7 +716,7 @@ pub mod tests {
         unsafe { assert_eq!((*md).tail, 1); }
         unsafe { assert_eq!((*md).head, 1); }
 
-        let block = heap.allocates("blah", "MY PRECIOUS DATA").unwrap();
+        let block = heap.allocate("blah", "MY PRECIOUS DATA".as_bytes()).unwrap();
 
         unsafe { println!("HEAP {:x}", *(ram.as_ptr().add(8) as *const u64)); }
         unsafe { println!("HEAP {:x}", *(ram.as_ptr().add(16) as *const u64)); }
@@ -757,9 +757,9 @@ pub mod tests {
 
         heap.walk(&mut |_blob| panic!());
 
-        let blob1 = heap.allocate("blah", &[0u8;16], false).unwrap();
-        let blob2 = heap.allocate("blop", &[0u8;16], false).unwrap();
-        let blob3 = heap.allocate("blar", &[0u8;16], false).unwrap();
+        let blob1 = heap.allocate("blah", &[0u8;16]).unwrap();
+        let blob2 = heap.allocate("blop", &[0u8;16]).unwrap();
+        let blob3 = heap.allocate("blar", &[0u8;16]).unwrap();
 
         heap.print(&|_blob| false);
 
@@ -777,7 +777,7 @@ pub mod tests {
             assert!(expected.is_empty());
         }
 
-        let blob4 = heap.allocate(&mut "blah", &[0u8;0], false).unwrap();
+        let blob4 = heap.allocate(&mut "blah", &[0u8;0]).unwrap();
 
         {
             let mut expected = vec![blob2, blob3, blob4];
@@ -793,7 +793,7 @@ pub mod tests {
             assert!(expected.is_empty());
         }
 
-        let blob5 = heap.allocate("blah", &[0u8;0], false).unwrap();
+        let blob5 = heap.allocate("blah", &[0u8;0]).unwrap();
 
         {
             let mut expected = vec![blob3, blob4, blob5];
@@ -806,8 +806,8 @@ pub mod tests {
     fn test_walk_only_garbage() {
         let ram = [0u8; 216];
         let heap = init_heap(&ram);
-        heap.allocate("test1", &[3u8;12], false).unwrap();
-        heap.allocate("test2", &[3u8;12], false).unwrap();
+        heap.allocate("test1", &[3u8;12]).unwrap();
+        heap.allocate("test2", &[3u8;12]).unwrap();
         heap.print(&|_blob| true);
     }
 
@@ -819,7 +819,7 @@ pub mod tests {
         assert_eq!(1, heap.load_tail());
         assert_eq!(Err(Nothing), heap.gc_tail(&|_blob|false));
 
-        let _blob = heap.allocate("abc", &vec![], false).unwrap();
+        let _blob = heap.allocate("abc", &vec![]).unwrap();
         assert_eq!(136, heap.available());
         assert_eq!(1, heap.load_tail());
         assert_eq!(Err(NoImmediateGarbage), heap.gc_tail(&|_blob|false));
@@ -845,8 +845,7 @@ pub mod tests {
         let re_add = &mut|old_blob:*const Blob| {
             let name = unsafe { (*old_blob).name() };
             let data = unsafe { (*old_blob).data() };
-            let ascii = unsafe { (*old_blob).ascii };
-            let blob = heap.allocate(&name, &data, ascii)?;
+            let blob = heap.allocate(&name, &data)?;
             hash.put(blob, &|id| heap.rard(id))?;
             Ok(())
         };
@@ -855,10 +854,10 @@ pub mod tests {
 
         assert_eq!(Ok(0), heap.gc_run(is_garbage, re_add));
 
-        hash.put(heap.allocates("abc", "1").unwrap(), rard).unwrap();
-        hash.put(heap.allocates("def", "2").unwrap(), rard).unwrap();
+        hash.put(heap.allocate("abc", "1".as_bytes()).unwrap(), rard).unwrap();
+        hash.put(heap.allocate("def", "2".as_bytes()).unwrap(), rard).unwrap();
         heap.print(is_garbage);
-        hash.put(heap.allocates("def", "3").unwrap(), rard).unwrap();
+        hash.put(heap.allocate("def", "3".as_bytes()).unwrap(), rard).unwrap();
 
         let report1 = heap.report(&|id| !hash.references(id, |id| heap.rard(id)));
         assert_eq!(1, report1.frags);

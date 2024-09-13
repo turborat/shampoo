@@ -1,13 +1,11 @@
 use io::stdin;
 use std::{env, io, thread};
-use std::io::Read;
+use std::io::{Read, Write};
 use std::process::exit;
 use std::sync::atomic::Ordering::Relaxed;
-use std::thread::sleep;
-use std::time::Duration;
 
 use crate::shampoo::{Shampoo, ShampooCondition};
-use crate::shmem::{str};
+use crate::shmem::str;
 use crate::util::mag_fmt;
 
 mod shampoo;
@@ -37,13 +35,19 @@ pub fn run(args: Vec<String>) {
             Shampoo::attach().info();
         }
         "init" => {
-            if args.len() < 4 {
+            if args.len() == 2 {
+                let hash_size = Shampoo::check_path("/dev/shm/SHAMPOO.hash", true);
+                let heap_size = Shampoo::check_path("/dev/shm/SHAMPOO.heap", true);
+                Shampoo::init(hash_size as usize, heap_size as usize);
+            }
+            else if args.len() < 4 {
                 die(-12, "required args: <hash-size> <heap-size>");
             }
-
-            let hash_size:usize = args[2].parse().unwrap();
-            let heap_size:usize = args[3].parse().unwrap();
-            Shampoo::init(hash_size, heap_size);
+            else {
+                let hash_size: usize = args[2].parse().unwrap();
+                let heap_size: usize = args[3].parse().unwrap();
+                Shampoo::init(hash_size, heap_size);
+            }
         }
         "put" => {
             if args.len() < 3 {
@@ -101,20 +105,23 @@ pub fn run(args: Vec<String>) {
                             match shampoo.put("abc", &format!("{}", x).as_bytes()) {
                                 Ok(_) => {
                                     if alloc_errs > 0 {
-                                        println!();
+                                        println!("{} times total -- GC anyone?", alloc_errs);
                                         alloc_errs = 0;
                                     }
                                 }
                                 Err(ShampooCondition::AllocationFailure) => {
                                     alloc_errs += 1;
-                                    print!("\rAllocation failure on {} {}. GC anyone?", name, alloc_errs);
+                                    if alloc_errs == 1 {
+                                        print!("\rAllocation failure on {} ... ", name);
+                                        io::stdout().flush().unwrap();
+                                    }
                                 },
                                 Err(err) => die(-99, &format!("{:?}", err))
                             };
 
-                            // shampoo.validate();
+                            shampoo.validate();
                             x += 1;
-                            sleep(Duration::from_micros(100));
+                            // sleep(Duration::from_micros(100));
                         }
                     }).unwrap();
                 handles.push(h);

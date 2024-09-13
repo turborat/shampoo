@@ -1,26 +1,23 @@
 use env::var;
-use std::collections::HashMap;
 use std::{env, fs};
+use std::collections::HashMap;
 use std::ffi::CString;
 use std::io::Error;
 use std::path::Path;
-use std::process::exit;
 use std::ptr;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
-use std::thread::sleep;
-use std::time::{Duration};
 
-use libc::{c_char, ftruncate, mmap, off_t, PROT_READ, shm_open, size_t, usleep};
+use libc::{c_char, ftruncate, mmap, off_t, PROT_READ, shm_open, size_t};
 use libc::{O_CREAT, O_EXCL, O_RDWR, S_IRUSR, S_IWUSR};
 use libc::{MAP_SHARED, PROT_WRITE};
 
+use crate::{die, heap};
 use crate::blob::{Blob, BLOB_MAGIC};
-use crate::{blob, die, hash, heap};
-use crate::heap::Heap;
 use crate::hash::Hash;
-use crate::shmem::{aload_u64, str_to_u64};
-use crate::util::{Matrix};
+use crate::heap::Heap;
+use crate::shmem::{aload_u64, str, str_to_u64};
+use crate::util::Matrix;
 use crate::util::puts;
 
 pub static VERBOSE:AtomicBool = AtomicBool::new(false);
@@ -33,6 +30,7 @@ pub enum ShampooCondition {
     EndOfSegment,
     NoImmediateGarbage,
     CASMiss,
+    Uninitialized,
     Nothing
 }
 
@@ -43,16 +41,17 @@ pub struct Shampoo {
 
 impl Shampoo {
     pub fn attach() -> Self {
-        let hash_size = Shampoo::check_path("/dev/shm/SHAMPOO.hash");
+        let hash_size = Shampoo::check_path("/dev/shm/SHAMPOO.hash", true);
         let hash_base = attach("SHAMPOO.hash", hash_size as size_t, false);
         let hash = Hash::attach(hash_base, hash_size);
 
-        let heap_size = Shampoo::check_path("/dev/shm/SHAMPOO.heap");
+        let heap_size = Shampoo::check_path("/dev/shm/SHAMPOO.heap", true);
         let heap_base = attach("SHAMPOO.heap", heap_size as size_t, false);
         let heap = Heap::attach(heap_base, heap_size);
 
         Shampoo { heap, hash }
     }
+
 
     pub fn init(hash_size:usize, heap_size:usize) {
         let hash_base = attach("SHAMPOO.hash", hash_size, true);
@@ -62,13 +61,18 @@ impl Shampoo {
         Heap::init(heap_base, heap_size);
     }
 
-    fn check_path(fname:&str) -> u64 {
+    pub(crate) fn check_path(fname:&str, suicide:bool) -> u64 {
         let path = Path::new(fname);
         if !path.exists() {
             puts(format!("shampoo::check_path::{} <- does not exist", fname));
-            die(-10, "shared memory not initialized. -- try: shampoo init <hash_size> <heap_size>");
+            if suicide {
+                die(-10, "Shampoo not initialized. -- try: shampoo init <hash_size> <heap_size>");
+            }
+            else {
+                return 0;
+            }
         }
-        std::fs::metadata(path).unwrap().len()
+        fs::metadata(path).unwrap().len()
     }
 
     fn is_garbage(&self, blob:*const Blob) -> bool {
@@ -79,18 +83,10 @@ impl Shampoo {
         self.heap.rard(id)
     }
 
-    fn _put(&self, name:&str, data:&[u8], ascii:bool) -> Result<(), ShampooCondition> {
-        let blob = self.heap.allocate(name, data, ascii)?;
+    pub fn put(&self, name:&str, data:&[u8]) -> Result<(), ShampooCondition> {
+        let blob = self.heap.allocate(name, data)?;
         self.hash.put(blob, &|id|self.rard(id))?;
         Ok(())
-    }
-
-    pub fn put(&self, name:&str, data:&[u8]) -> Result<(), ShampooCondition> {
-        self._put(name, data, false)
-    }
-
-    pub fn puts(&self, name:&str, txt:&str) -> Result<(), ShampooCondition> {
-        self._put(name, txt.as_bytes(), true)
     }
 
     pub fn get(&self, name:&str) -> Option<Vec<u8>> {
@@ -136,15 +132,28 @@ impl Shampoo {
     }
 
     pub fn dump() {
-        let heap_size = Shampoo::check_path("/dev/shm/SHAMPOO.heap");
+        let heap_size = Shampoo::check_path("/dev/shm/SHAMPOO.heap", true);
         let heap_base = attach("SHAMPOO.heap", heap_size as size_t, false);
+        let heap_end = unsafe { heap_base.add(heap_size as usize) };
         let mut addr = unsafe { heap_base.add(heap::Metadata::size_of()) };
 
         loop {
-            let magic = aload_u64("blob/magic", addr as *const u64);
-            if magic != str_to_u64(BLOB_MAGIC) {
+            if addr == heap_end {
+                println!("@{:x} EOH", addr as u64);
                 return;
             }
+
+            let magic = aload_u64("blob/magic", addr as *const u64);
+            if magic != str_to_u64(BLOB_MAGIC) {
+                if magic == 0 {
+                    println!("@{:x} 0", addr as u64);
+                }
+                else {
+                    println!("@{:x} {}", addr as u64, str(addr, 4));
+                }
+                return;
+            }
+
             let blob = addr as *const Blob;
             print!("@{:x} ", blob as u64);
             unsafe { print!("{:?}\n", (*blob)) };
@@ -158,10 +167,12 @@ impl Shampoo {
             match self.heap.gc_run(
                 &mut|blob| self.is_garbage(blob),
                 &mut|blob| unsafe {
-                    self._put(&(*blob).name(), &(*blob).data(), (*blob).ascii)
+                    self.put(&(*blob).name(), &(*blob).data())
                 }
             ) {
-                Ok(_) => sleep(Duration::from_micros(100)),
+                Ok(_) => {
+                    //sleep(Duration::from_micros(100))
+                },
                 Err(err) => die(-13, &format!("{:?}", err))
             };
         }

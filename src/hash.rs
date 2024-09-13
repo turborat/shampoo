@@ -259,7 +259,7 @@ pub(crate) mod tests {
 
         let heap_mem = [0u8; 128];
         let heap = init_heap(&heap_mem);
-        let blob_in = heap.allocates("blob1", "blah").unwrap();
+        let blob_in = heap.allocate("blob1", "blah".as_bytes()).unwrap();
 
         hash.put(blob_in, &|id| heap.rard(id)).unwrap();
 
@@ -285,8 +285,8 @@ pub(crate) mod tests {
 
             let ram = [0u8; 144];
             let heap = init_heap(&ram);
-            let blob1 = heap.allocates("blob", "blah").unwrap();
-            let blob2 = heap.allocates("blob", "blech").unwrap();
+            let blob1 = heap.allocate("blob", "blah".as_bytes()).unwrap();
+            let blob2 = heap.allocate("blob", "blech".as_bytes()).unwrap();
 
             hash.put(blob1, &|id| heap.rard(id)).unwrap();
             hash.put(blob2, &|id| heap.rard(id)).unwrap();
@@ -313,7 +313,7 @@ pub(crate) mod tests {
 
         let heap_mem = [0u8; 128];
         let heap = init_heap(&heap_mem);
-        let blob = heap.allocates("blob1", "blah").unwrap();
+        let blob = heap.allocate("blob1", "blah".as_bytes()).unwrap();
 
         let report1 = hash.report(&|id| heap.rard(id));
         assert_eq!(0, report1.used);
@@ -335,8 +335,8 @@ pub(crate) mod tests {
             let hash = init_hash(&hash_mem, 4);
             let heap_mem = [0u8; 256];
             let heap = init_heap(&heap_mem);
-            let blob1 = heap.allocates("blob", "abc").unwrap();
-            let blob2 = heap.allocates("blobZ", "xyz").unwrap();
+            let blob1 = heap.allocate("blob", "abc".as_bytes()).unwrap();
+            let blob2 = heap.allocate("blobZ", "xyz".as_bytes()).unwrap();
 
             let hash1 = (*blob1).hash();
             let hash2 = (*blob2).hash();
@@ -365,14 +365,14 @@ pub(crate) mod tests {
 
         let heap_mem = [0u8; 144];
         let heap = init_heap(&heap_mem);
-        let blob1 = heap.allocates("blob", "blah").unwrap();
+        let blob1 = heap.allocate("blob", "blah".as_bytes()).unwrap();
 
         assert!(!hash.references(blob1, &|id| heap.rard(id)));
 
         hash.put(blob1, &|id| heap.rard(id)).unwrap();
         assert!(hash.references(blob1, &|id| heap.rard(id)));
 
-        let blob2 = heap.allocates("blob", "blech").unwrap();
+        let blob2 = heap.allocate("blob", "blech".as_bytes()).unwrap();
         hash.put(blob2, &|id| heap.rard(id)).unwrap();
 
         assert!(!hash.references(blob1, &|id| heap.rard(id)));
