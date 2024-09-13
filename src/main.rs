@@ -37,6 +37,10 @@ pub fn run(args: Vec<String>) {
             Shampoo::attach().info();
         }
         "init" => {
+            if args.len() < 4 {
+                die(-12, "required args: <hash-size> <heap-size>");
+            }
+
             let hash_size:usize = args[2].parse().unwrap();
             let heap_size:usize = args[3].parse().unwrap();
             Shampoo::init(hash_size, heap_size);

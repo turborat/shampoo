@@ -1,6 +1,6 @@
 use env::var;
 use std::collections::HashMap;
-use std::env;
+use std::{env, fs};
 use std::ffi::CString;
 use std::io::Error;
 use std::path::Path;
@@ -54,8 +54,6 @@ impl Shampoo {
     }
 
     pub fn init(hash_size:usize, heap_size:usize) {
-        println!("usize::MAX:{}", usize::MAX);
-
         let hash_base = attach("SHAMPOO.hash", hash_size, true);
         Hash::init(hash_base, hash_size);
 
@@ -66,6 +64,7 @@ impl Shampoo {
     fn check_path(fname:&str) -> u64 {
         let path = Path::new(fname);
         if !path.exists() {
+            puts(format!("shampoo::check_path::{} <- does not exist", fname));
             die(-10, "shared memory not initialized. -- try: shampoo init <hash_size> <heap_size>");
         }
         std::fs::metadata(path).unwrap().len()
@@ -164,7 +163,7 @@ impl Shampoo {
                 }
             ) {
                 Ok(_) => sleep(Duration::from_micros(100)),
-                Err(err) => die(-6, &format!("{:?}", err))
+                Err(err) => die(-13, &format!("{:?}", err))
             };
         }
     }
@@ -229,7 +228,7 @@ fn attach(name:&str, size: size_t, create:bool) -> *mut u8 {
         let fh = shm_open(c_char_ptr, oflags, S_IRUSR | S_IWUSR);
 
         if fh == 0 {
-            panic!("shmem::attach::shm_open failed: {:?}", Error::last_os_error());
+            die(-15, &format!("shmem::attach::shm_open({}) failed: {:?}", name, Error::last_os_error()));
         }
 
         let _ = ftruncate(fh, size as off_t);
@@ -240,7 +239,7 @@ fn attach(name:&str, size: size_t, create:bool) -> *mut u8 {
                         MAP_SHARED, fh, 0);
 
         if addr as i64 == -1 {
-            panic!("shmem::attach::mmap failed: {:?}", Error::last_os_error());
+            die(-16, &format!("shmem::attach::mmap({}) failed: {:?}", name, Error::last_os_error()));
         }
 
         // todo: close file descriptor once region is mapped //
