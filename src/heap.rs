@@ -45,7 +45,7 @@ pub struct HeapReport {
 
 impl fmt::Display for HeapReport {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "Heap blobs:{:?}({}) fragments:{:?}({}) -> {}% garbage / {} available",
+        write!(f, "HEAP blobs:{:?}({}) fragments:{:?}({}) -> {}% garbage / {} available",
                  self.blobs,
                  mag_fmt(self.blob_bytes as u64),
                  self.frags,

@@ -1,4 +1,6 @@
-use std::mem;
+use fmt::Display;
+use std::fmt::Formatter;
+use std::{fmt, mem};
 
 use xxhash_rust::xxh3::xxh3_64;
 
@@ -21,11 +23,29 @@ pub struct Hash {
     bins: u32
 }
 
-#[derive(Debug)]
 pub struct HashReport {
     used: u32,
     free: u32,
     overflows: u32
+}
+
+impl Display for HashReport {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "HASH bins[used:{}({}%) free:{}({}%) overflows:{}] -> load:{}",
+            self.used,
+            100 * self.used / (self.used + self.free),
+            self.free,
+            100 * self.free / (self.used + self.free),
+            self.overflows,
+            self.load()
+        )
+    }
+}
+
+impl HashReport {
+    pub fn load(&self) -> f32 {
+        self.used as f32 / (self.used + self.free) as f32
+    }
 }
 
 impl Hash {

@@ -121,15 +121,15 @@ pub fn run(args: Vec<String>) {
 
 fn usage() {
     let msg =  "try:  init [hash-size] [heap-size] (-v)
-      put  [name]                  (-v)      add named data via <stdin>
-      get  [name]                  <-v>      get named data
+      put  [name]                  (-v)      store named data via <stdin>
+      get  [name]                  (-v)      retrieve named data via <stdout>
       info                         (-v)      display infomercials
-      heap                         <-v>      display heap
-      hash                         <-v>      display hash
-      show                         <-v>      show key / value pairs
-      dump                         <-v>      dump raw heap data
-      map                          <-v>      render heap map
-      gc                           <-v>      start garbage collector\n";
+      heap                         (-v)      display heap
+      hash                         (-v)      display hash
+      show                         (-v)      show key / value pairs
+      dump                         (-v)      dump raw heap data
+      map                          (-v)      render heap map
+      gc                           (-v)      start garbage collector\n";
     die(-1, msg);
 }
 

@@ -99,14 +99,15 @@ impl Shampoo {
     }
 
     pub fn info(&self) {
-        println!("{:?}", &self.hash.report(&|id| self.rard(id)));
+        println!("{}", &self.hash.report(&|id| self.rard(id)));
         println!("{}", &self.heap.report(&|blob|self.is_garbage(blob)));
-        self.heap.info();
-
+        if VERBOSE.load(Relaxed) {
+            self.heap.info();
+        }
     }
 
     pub fn show_hash(&self) {
-        println!("{:?}", &self.hash.report(&|id| self.rard(id)));
+        println!("{}", &self.hash.report(&|id| self.rard(id)));
         self.hash.print(|id| self.rard(id));
     }
 
