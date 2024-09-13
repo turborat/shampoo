@@ -220,6 +220,12 @@ impl Shampoo {
 }
 
 fn attach(name:&str, size: size_t, create:bool) -> *mut u8 {
+    let fname = &format!("/dev/shm/{}", name);
+    if create && Path::new(fname).exists() {
+        fs::remove_file(fname).unwrap();
+        puts(format!("shmem::attach::removing old {}", fname));
+    }
+
     let c_string = CString::new(name.as_bytes()).expect("cvt!");
     let c_char_ptr: *const c_char = c_string.as_ptr();
     let oflags = if create { O_CREAT | O_EXCL | O_RDWR } else { O_RDWR };

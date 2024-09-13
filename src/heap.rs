@@ -94,7 +94,7 @@ impl Heap {
         unsafe { (*meta).head = 1 };
         unsafe { (*meta).tail = 1 };
 
-        puts(format!("heap::init @{:x} capacity {}", meta as u64, mag_fmt(capacity as u64)));
+        println!("Initialized heap with capacity {}", mag_fmt(capacity as u64));
     }
 
     pub fn validate(&self) {

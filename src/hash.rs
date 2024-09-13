@@ -38,7 +38,7 @@ impl Hash {
 
     pub fn init(base:*const u8, hash_size:usize) -> Self {
         let bins = hash_size / 8;
-        puts(format!("hash::init @{:x} {} bins", base as u64, bins));
+        println!("Initialized hash table with {} bins", bins);
         assert_ne!(0, bins, "zero bins");
         Hash { base: base as *mut Entry, bins: bins as u32 }
     }
