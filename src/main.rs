@@ -76,7 +76,7 @@ pub fn run(args: Vec<String>) {
         "heap"      => Shampoo::attach().show_heap(),
         "hash"      => Shampoo::attach().show_hash(),
         "show"      => Shampoo::attach().show_pairs(),
-        "dump"      => Shampoo::attach().dump(),
+        "dump"      => Shampoo::dump(),
         "map"       => Shampoo::attach().map(),
         "gc" => {
             match Shampoo::attach().gc() {
@@ -87,7 +87,7 @@ pub fn run(args: Vec<String>) {
         "stress"   => {
             let mut handles = vec![];
             for n in 0..1 {
-                let name = format!("stress{}", n);
+                let name = format!("stress-{}", n+1);
                 println!("Spawning {}", name);
                 let h = thread::Builder::new()
                     .name(name.clone())
@@ -95,17 +95,26 @@ pub fn run(args: Vec<String>) {
                         println!("thread {:?}", thread::current());
                         let shampoo = Shampoo::attach();
                         let mut x = 0;
+                        let mut alloc_errs = 0;
+
                         loop {
                             match shampoo.put("abc", &format!("{}", x).as_bytes()) {
-                                Ok(_) => {}
+                                Ok(_) => {
+                                    if alloc_errs > 0 {
+                                        println!();
+                                        alloc_errs = 0;
+                                    }
+                                }
                                 Err(ShampooCondition::AllocationFailure) => {
-                                    println!("Alloc failure on {}", name);
+                                    alloc_errs += 1;
+                                    print!("\rAllocation failure on {} {}. GC anyone?", name, alloc_errs);
                                 },
                                 Err(err) => die(-99, &format!("{:?}", err))
                             };
-                            shampoo.validate();
+
+                            // shampoo.validate();
                             x += 1;
-                            sleep(Duration::from_millis(1));
+                            sleep(Duration::from_micros(100));
                         }
                     }).unwrap();
                 handles.push(h);

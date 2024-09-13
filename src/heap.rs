@@ -15,7 +15,7 @@ use crate::util::puts;
 
 #[repr(C)]
 #[derive(Debug)]
-struct Metadata {
+pub struct Metadata {
     magic: [u8;4],
     head: u64,
     tail: u64
