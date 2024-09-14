@@ -3,6 +3,8 @@ use std::fmt;
 use std::fmt::Formatter;
 use crate::shampoo::VERBOSE;
 use std::sync::atomic::Ordering::Relaxed;
+use regex::{Regex};
+use crate::die;
 
 // stolen!
 pub fn mag_fmt(value: u64) -> String {
@@ -26,6 +28,26 @@ pub fn mag_fmt(value: u64) -> String {
         scale_num(value, 1_000) + "k"
     } else {
         scale_num(value, 1) + "b"
+    }
+}
+
+pub fn parse_int(txt:&str) -> u64 {
+    let re = Regex::new(r"(?i)(\d+)([kmgt]?)").unwrap();
+    let (num, unit) = match re.captures(txt) {
+        Some(caps) => (caps[1].parse::<u64>().unwrap(), caps[2].to_string()),
+        None => {
+            die(-16, &format!("?:{}", txt));
+            panic!();
+        }
+    };
+
+    match unit.to_lowercase().as_str() {
+        "" => num,
+        "k" => num * 1<<10,
+        "m" => num * 1<<20,
+        "g" => num * 1<<30,
+        "t" => num * 1<<40,
+        _ => panic!("??:{}", txt)
     }
 }
 
@@ -96,7 +118,7 @@ pub fn puts(txt:String) {
 
 #[cfg(test)]
 mod test {
-    use crate::util::{mag_fmt, Matrix};
+    use crate::util::{mag_fmt, Matrix, parse_int};
 
     #[test]
     fn test_mag_fmt() {
@@ -138,5 +160,19 @@ mod test {
         let str = format!("{}", mat);
         println!("{}", str);
         assert_eq!("hi    def jar \nxxxee .   \n", str);
+    }
+
+    #[test]
+    fn test_parse_int() {
+        assert_eq!(123, parse_int("123"));
+        assert_eq!(10240, parse_int("10k"));
+        assert_eq!(1<<20, parse_int("1m"));
+        assert_eq!((1<<30)*22, parse_int("22g"));
+        assert_eq!((1<<40)*77, parse_int("77t"));
+
+        assert_eq!(1<<10, parse_int("1K"));
+        assert_eq!(1<<20, parse_int("1M"));
+        assert_eq!(1<<30, parse_int("1G"));
+        assert_eq!(1<<40, parse_int("1T"));
     }
 }

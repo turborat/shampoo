@@ -6,7 +6,7 @@ use std::sync::atomic::Ordering::Relaxed;
 
 use crate::shampoo::{Shampoo, ShampooCondition};
 use crate::shmem::str;
-use crate::util::mag_fmt;
+use crate::util::{mag_fmt, parse_int};
 
 mod shampoo;
 mod hash;
@@ -44,8 +44,8 @@ pub fn run(args: Vec<String>) {
                 die(-12, "required args: <hash-size> <heap-size>");
             }
             else {
-                let hash_size: usize = args[2].parse().unwrap();
-                let heap_size: usize = args[3].parse().unwrap();
+                let hash_size= parse_int(&args[2]) as usize;
+                let heap_size= parse_int(&args[3]) as usize;
                 Shampoo::init(hash_size, heap_size);
             }
         }
