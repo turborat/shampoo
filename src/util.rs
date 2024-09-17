@@ -20,12 +20,12 @@ pub fn mag_fmt(value: u64) -> String {
 
     if value == 0u64 {
         String::from("0b")
-    } else if value > 999_999_999 {
-        scale_num(value, 1_000_000_000) + "g"
-    } else if value > 999_999 {
-        scale_num(value, 1_000_000) + "m"
-    } else if value > 999 {
-        scale_num(value, 1_000) + "k"
+    } else if value >= 1<<30 {
+        scale_num(value, 1<<30) + "g"
+    } else if value >= 1<<20 {
+        scale_num(value, 1<<20) + "m"
+    } else if value >= 1<<10 {
+        scale_num(value, 1<<10) + "k"
     } else {
         scale_num(value, 1) + "b"
     }
@@ -123,22 +123,30 @@ mod test {
     #[test]
     fn test_mag_fmt() {
         assert_eq!("543b", mag_fmt(543));
-        assert_eq!("1.0k", mag_fmt(1000));
+        assert_eq!("1000b", mag_fmt(1000));
+        assert_eq!("1.0k", mag_fmt(1024));
         assert_eq!("1.2k", mag_fmt(1234));
         assert_eq!("1.3k", mag_fmt(1294));
-        assert_eq!("13m", mag_fmt(12944723));
-        assert_eq!("1.3m", mag_fmt(1294472));
-        assert_eq!("1.0g", mag_fmt(1_000_000_000));
+        assert_eq!("12m", mag_fmt(12944723));
+        assert_eq!("13m", mag_fmt(13*1<<20));
+        assert_eq!("1.2m", mag_fmt(1294472));
+        assert_eq!("1.3m", mag_fmt(1363148));
+        assert_eq!("954m", mag_fmt(1_000_000_000));
+        assert_eq!("1.0g", mag_fmt(1073741824));
 
         assert_eq!("10b", mag_fmt(10));
         assert_eq!("10k", mag_fmt(10_000));
         assert_eq!("10m", mag_fmt(10_000_000));
-        assert_eq!("10g", mag_fmt(10_000_000_000));
+        assert_eq!("9.3g", mag_fmt(10_000_000_000));
+        assert_eq!("10g", mag_fmt(10737418240));
 
         assert_eq!("1b", mag_fmt(1));
-        assert_eq!("1.0k", mag_fmt(1000));
-        assert_eq!("1.0m", mag_fmt(1000_000));
-        assert_eq!("1.0g", mag_fmt(1000_000_000));
+        assert_eq!("1000b", mag_fmt(1000));
+        assert_eq!("1.0k", mag_fmt(1024));
+        assert_eq!("977k", mag_fmt(1000_000));
+        assert_eq!("1.0m", mag_fmt(1<<20));
+        assert_eq!("954m", mag_fmt(1000_000_000));
+        assert_eq!("1.0g", mag_fmt(1<<30));
 
         assert_eq!("10m", mag_fmt(9962084));
     }
