@@ -15,7 +15,7 @@ use libc::{MAP_SHARED, PROT_WRITE};
 use crate::{die, heap};
 use crate::blob::{Blob, BLOB_MAGIC};
 use crate::hash::Hash;
-use crate::heap::Heap;
+use crate::heap::{Heap, Metadata};
 use crate::shmem::{aload_u64, str, str_to_u64};
 use crate::util::Matrix;
 use crate::util::puts;
@@ -133,31 +133,20 @@ impl Shampoo {
 
     pub fn dump() {
         let heap_size = Shampoo::check_path("/dev/shm/SHAMPOO.heap", true);
-        let heap_base = attach("SHAMPOO.heap", heap_size as size_t, false);
-        let heap_end = unsafe { heap_base.add(heap_size as usize) };
-        let mut addr = unsafe { heap_base.add(heap::Metadata::size_of()) };
+        let base = attach("SHAMPOO.heap", heap_size as size_t, false);
+        let meta = base as *const Metadata;
+        let head = unsafe { (*meta).head };
+        let tail = unsafe { (*meta).tail };
+        let boh = unsafe { base.add( Metadata::size_of()) } as u64;
+        let eoh = unsafe { base.add(heap_size as usize) } as u64;
+        let rard = |id| (boh + ((id - 1) % (eoh - boh))) as *const Blob;
+        let mut id = tail;
 
-        loop {
-            if addr == heap_end {
-                println!("@{:x} EOH", addr as u64);
-                return;
-            }
-
-            let magic = aload_u64("blob/magic", addr as *const u64);
-            if magic != str_to_u64(BLOB_MAGIC) {
-                if magic == 0 {
-                    println!("@{:x} 0", addr as u64);
-                }
-                else {
-                    println!("@{:x} {}", addr as u64, str(addr, 4));
-                }
-                return;
-            }
-
-            let blob = addr as *const Blob;
+        while id < head {
+            let blob = rard(id);
             print!("@{:x} ", blob as u64);
-            unsafe { print!("{:?}\n", (*blob)) };
-            addr = unsafe { addr.add((*blob).len) };
+            unsafe { print!("{:?}\n", (*blob)); }
+            id += unsafe { (*blob).len } as u64;
         }
     }
 

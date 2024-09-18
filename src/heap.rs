@@ -16,9 +16,9 @@ use crate::util::puts;
 #[repr(C)]
 #[derive(Debug)]
 pub struct Metadata {
-    magic: [u8;4],
-    head: u64,
-    tail: u64
+    pub magic: [u8;4],
+    pub head: u64,
+    pub tail: u64
 }
 
 impl Metadata {
@@ -29,7 +29,7 @@ impl Metadata {
 
 pub struct Heap {
     pub capacity: usize,
-    meta: *mut Metadata,
+    pub meta: *mut Metadata,
     pub boh: u64,         // beginning of heap
     pub eoh: u64          //       end of heap
 }

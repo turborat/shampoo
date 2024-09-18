@@ -89,47 +89,32 @@ pub fn run(args: Vec<String>) {
             };
         }
         "stress"   => {
-            let mut handles = vec![];
-            for n in 0..1 {
-                let name = format!("stress-{}", n+1);
-                println!("Spawning {}", name);
-                let h = thread::Builder::new()
-                    .name(name.clone())
-                    .spawn(move || {
-                        println!("thread {:?}", thread::current());
-                        let shampoo = Shampoo::attach();
-                        let mut x = 0;
-                        let mut alloc_errs = 0;
+            let shampoo = Shampoo::attach();
+            let mut x = 0;
+            let mut alloc_errs = 0;
 
-                        loop {
-                            match shampoo.put("abc", &format!("{}", x).as_bytes()) {
-                                Ok(_) => {
-                                    if alloc_errs > 0 {
-                                        println!("{} times total -- GC anyone?", alloc_errs);
-                                        alloc_errs = 0;
-                                    }
-                                }
-                                Err(ShampooCondition::AllocationFailure) => {
-                                    alloc_errs += 1;
-                                    if alloc_errs == 1 {
-                                        print!("\rAllocation failure on {} ... ", name);
-                                        io::stdout().flush().unwrap();
-                                    }
-                                },
-                                Err(err) => die(-99, &format!("{:?}", err))
-                            };
-
-                            shampoo.validate();
-                            x += 1;
-                            // sleep(Duration::from_micros(100));
+            loop {
+                match shampoo.put("abc", &format!("{}", x).as_bytes()) {
+                    Ok(_) => {
+                        if alloc_errs > 0 {
+                            println!("{} times total -- GC anyone?", alloc_errs);
+                            alloc_errs = 0;
                         }
-                    }).unwrap();
-                handles.push(h);
+                    }
+                    Err(ShampooCondition::AllocationFailure) => {
+                        alloc_errs += 1;
+                        if alloc_errs == 1 {
+                            print!("\rAllocation failure... ");
+                            io::stdout().flush().unwrap();
+                        }
+                    },
+                    Err(err) => die(-99, &format!("{:?}", err))
+                };
+
+                //shampoo.validate();
+                x += 1;
+                // sleep(Duration::from_micros(100));
             }
-            for h in handles {
-                h.join().unwrap();
-            }
-            panic!("this should never happen");
         }
         _ => usage()
     }
