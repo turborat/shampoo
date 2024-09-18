@@ -52,14 +52,12 @@ impl Hash {
     pub fn attach(base:*const u8, hash_size:u64) -> Self {
         let bins = hash_size / 8;
         puts(format!("init_hash @{:x} {} bins", base as u64, bins));
-        assert_ne!(0, bins, "zero bins {}, {}", bins, hash_size);
         Hash { base: base as *mut Entry, bins: bins as u32 }
     }
 
     pub fn init(base:*const u8, hash_size:usize) -> Self {
         let bins = hash_size / 8;
         println!("Initialized hash table with {} bins", bins);
-        assert_ne!(0, bins, "zero bins");
         Hash { base: base as *mut Entry, bins: bins as u32 }
     }
 
@@ -68,7 +66,6 @@ impl Hash {
     {
         let name = unsafe { (*blob).name() } ;
         let xx = unsafe { (*blob).hash() };
-        assert_ne!(0, self.bins);
         let mut bin = xx % self.bins;
 
         puts(format!("xxhash({}) -> {:x} % {} = bin {}", name, xx, self.bins, bin));

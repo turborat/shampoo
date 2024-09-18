@@ -144,8 +144,13 @@ impl Shampoo {
 
         while id < head {
             let blob = rard(id);
-            print!("@{:x} ", blob as u64);
-            unsafe { print!("{:?}\n", (*blob)); }
+            if VERBOSE.load(Relaxed) {
+                print!("@{:x} ", blob as u64);
+                unsafe { print!("{:?}\n", (*blob)); }
+            }
+            else {
+                unsafe { print!("{}\n", (*blob)); }
+            }
             id += unsafe { (*blob).len } as u64;
         }
     }

@@ -111,7 +111,7 @@ pub fn run(args: Vec<String>) {
                     Err(err) => die(-99, &format!("{:?}", err))
                 };
 
-                //shampoo.validate();
+                shampoo.validate();
                 x += 1;
                 // sleep(Duration::from_micros(100));
             }

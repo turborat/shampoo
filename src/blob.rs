@@ -1,6 +1,8 @@
 use std::mem::size_of;
 use std::thread::sleep;
 use std::time::Duration;
+use std::fmt;
+use std::fmt::Formatter;
 use crate::hash::Hash;
 
 use crate::shmem;
@@ -20,6 +22,20 @@ pub struct Blob {
     pub data_len: usize,
     pub id: u64,
     pad: [u8;8]
+}
+
+impl fmt::Display for Blob {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let addr = self as *const Blob;
+        write!(f, "@{:x} {} id:{} len:{} '{}' = {}",
+               addr as u64,
+               str(addr as *const u8, 4),
+               self.id,
+               mag_fmt(self.len as u64),
+               self.name(),
+               self.data_view()
+        )
+    }
 }
 
 impl Blob {
