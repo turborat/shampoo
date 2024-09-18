@@ -137,10 +137,13 @@ impl Shampoo {
         let meta = base as *const Metadata;
         let head = unsafe { (*meta).head };
         let tail = unsafe { (*meta).tail };
-        let boh = unsafe { base.add( Metadata::size_of()) } as u64;
+        let boh = unsafe { base.add(Metadata::size_of()) } as u64;
         let eoh = unsafe { base.add(heap_size as usize) } as u64;
         let rard = |id| (boh + ((id - 1) % (eoh - boh))) as *const Blob;
         let mut id = tail;
+
+        println!("boh@{:x} eoh@{:x} tail@{:x} head@{:x}", 
+                 boh, eoh, rard(tail) as u64, rard(head) as u64);
 
         while id < head {
             let blob = rard(id);
