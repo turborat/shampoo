@@ -191,7 +191,7 @@ impl Heap {
             unsafe { (*blob).mark_ready() };
             assert_eq!(self.eoh, blob as u64 + unsafe { (*blob).len } as u64);
         } else {
-            puts(format!("heap::pad::WARN::pad did not succeed. will retry"));
+            puts(format!("heap::pad::WARN::pad did not succeed. hoping for best"));
         }
     }
 

@@ -31,6 +31,7 @@ pub fn inc_ptr<T>(ptr: *const T, offset:usize) -> *mut T {
 
 
 pub fn str_to_u64(str:&str) -> u64 {
+    assert_eq!(4, str.len());
     // network byte order = little endian
     let mut ret = 0u64;
     for i in 0..str.len() {
@@ -38,6 +39,15 @@ pub fn str_to_u64(str:&str) -> u64 {
         ret += (c as u64) << (8*i) as u64;
     }
     ret
+}
+
+pub fn u64_to_str(n:u64) -> String {
+    format!("{}{}{}{}",
+            (n & 0xFF) as u8 as char,
+            ((n >> 8) & 0xFF) as u8 as char,
+            ((n >> 16) & 0xFF) as u8 as char,
+            ((n >> 24) & 0xFF) as u8 as char
+    )
 }
 
 pub fn astore_u64(name:&str, addr:*const u64, val:u64) -> u64 {
@@ -89,7 +99,7 @@ pub fn cas_u64x(name:&str, addr:* const u64, cur:u64, new:u64) -> Result<u64, u6
 
 #[cfg(test)]
 mod test {
-    use crate::shmem::{aload_u64, astore_u64, cas_u64, cas_u64x, str, str_to_u64};
+    use crate::shmem::{aload_u64, astore_u64, cas_u64, cas_u64x, str, str_to_u64, u64_to_str};
 
     #[test]
     fn test_str() {
@@ -209,5 +219,13 @@ mod test {
         let prev = astore_u64("sanity", pn, 32u64);
         assert_eq!(23, prev);
         assert_eq!(32, n);
+    }
+
+    #[test]
+    fn test_u64_to_str() {
+        assert_eq!("ABCD", u64_to_str(str_to_u64("ABCD")));
+        assert_eq!("A\0\0\0", u64_to_str('A' as u64));
+        assert_eq!("PEND", u64_to_str(str_to_u64("PEND")));
+        assert_eq!("BLOB", u64_to_str(str_to_u64("BLOB")));
     }
 }

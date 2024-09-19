@@ -1,12 +1,12 @@
+use std::fmt;
+use std::fmt::Formatter;
 use std::mem::size_of;
 use std::thread::sleep;
 use std::time::Duration;
-use std::fmt;
-use std::fmt::Formatter;
-use crate::hash::Hash;
 
+use crate::hash::Hash;
 use crate::shmem;
-use crate::shmem::{aload_u64, astore_u64, cas_u64, inc_ptr, str, str_to_u64};
+use crate::shmem::{aload_u64, cas_u64, inc_ptr, str, str_to_u64, u64_to_str};
 use crate::util::mag_fmt;
 use crate::util::puts;
 
@@ -109,7 +109,8 @@ impl Blob {
             sleep(Duration::from_millis(10));
             n += 1;
             if n > 100 {
-                panic!("waiting for blob {:x}", self.addr());
+                let meta = aload_u64("meta", self.addr() as *const u64);
+                panic!("waiting for blob {:x} ({})", self.addr(), u64_to_str(meta));
             }
         }
         self.validate();
@@ -152,8 +153,7 @@ impl Blob {
         let msg = format!("invalid blob @{:x} {:?}", self as *const Blob as u64, self);
         let magic = aload_u64("magic", (*self).magic.as_ptr() as *const u64);
         if magic != str_to_u64(BLOB_MAGIC) {
-            println!("magic:{}/{}", magic, str_to_u64(BLOB_MAGIC));
-            panic!("{}", msg);
+            panic!("{}\n{}", msg, self);
         }
         assert!(self.len >= Blob::header_len(), "?len:{}", self.len);
     }
