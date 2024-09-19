@@ -84,6 +84,7 @@ impl Blob {
             panic!("!ready");
         }
         puts(format!("++ {:?}", self));
+        puts(format!("++ {}", self));
     }
 
     pub fn magic(&self) -> u64 {

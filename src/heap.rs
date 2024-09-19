@@ -163,6 +163,7 @@ impl Heap {
             Blob::mark_pending(self.rard(begin) as *const u8);
 
             if self.cas_head(begin, end) {
+                puts(format!("heap::find_block::acquired block @{:x}", begin));
                 return Ok((begin, end-begin));
             }
             else {
