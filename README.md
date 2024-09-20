@@ -1,6 +1,5 @@
 # shampoo
-A serverless, high-performance data cache. The name is an amalgamation of an 
-implementation detail and my favorite breakfast. 
+A serverless, high-performance data cache.
 
 The orignal idea was something like redis but good. The project ignited when I realised 
 it was possible to accomplish in a performant, serverless fashion by relying 
