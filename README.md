@@ -11,8 +11,7 @@ Features
 * Minimal latency / high throughput
 * Lock-free / highly concurrent
 * O(1) scalability for all operations
-* O(1) scalability wrt number of clients
+* O(1) scalability wrt number of clients (up to a point)
 * Nifty heap & hash visualisation tools
 * Abilty to monitor, replicate, snapshot, etc. instantaneously.
 * Multiple garbage collection algorithms depending on use-case
-* Fast as f
