@@ -703,7 +703,7 @@ pub mod tests {
 
     #[test]
     fn test_paranioa_can_delete() {
-        let mut ram = [0u8;128];
+        let ram = [0u8;128];
         let heap = init_heap(&ram);
 
         // od(ram.as_mut_ptr(), ram.len());

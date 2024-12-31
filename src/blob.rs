@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use crate::hash::Hash;
 use crate::shmem;
-use crate::shmem::{aload_u64, cas_u64, inc_ptr, str, str_to_u64, u64_to_str};
+use crate::shmem::{aload_u64, astore_u64, cas_u64, inc_ptr, str, str_to_u64, u64_to_str};
 use crate::util::mag_fmt;
 use crate::util::puts;
 

@@ -31,7 +31,7 @@ pub fn inc_ptr<T>(ptr: *const T, offset:usize) -> *mut T {
 
 
 pub fn str_to_u64(str:&str) -> u64 {
-    assert_eq!(4, str.len());
+    assert!(str.len() <= 4);
     // network byte order = little endian
     let mut ret = 0u64;
     for i in 0..str.len() {
@@ -75,24 +75,24 @@ pub fn cas_u64(name:&str, addr:* const u64, cur:u64, new:u64) -> bool {
 }
 
 pub fn cas_u64x(name:&str, addr:* const u64, cur:u64, new:u64) -> Result<u64, u64> {
-    unsafe {
-        if addr as u64 == 0 {
-            panic!("invalid access");
+    if addr as u64 == 0 {
+        panic!("invalid access");
+    }
+
+    let ptr = addr as *const AtomicU64;
+    match unsafe { (*(ptr)).compare_exchange(cur, new, SeqCst, SeqCst) } {
+        Ok(prev) => {
+            if ECHO.load(Relaxed) {
+                println!("shmem::cas::{}@{:x}::[{:x} -> {:x}]", name, addr as u64, cur, new);
+            }
+            Ok(prev)
         }
-        match (*(addr as *const AtomicU64)).compare_exchange(cur, new, SeqCst, SeqCst) {
-            Ok(prev) => {
-                if ECHO.load(Relaxed) {
-                    println!("shmem::cas::{}@{:x}::[{:x} -> {:x}]", name, addr as u64, cur, new);
-                }
-                Ok(prev)
+        Err(curr) => {
+            if ECHO.load(Relaxed) {
+                println!("shmem::cas::failed::{}@{:x}::[{:x} -> {:x}] curr={:x}",
+                         name, addr as u64, cur, new, curr);
             }
-            Err(curr) => {
-                if ECHO.load(Relaxed) {
-                    println!("shmem::cas::failed::{}@{:x}::[{:x} -> {:x}] curr={:x}",
-                             name, addr as u64, cur, new, curr);
-                }
-                Err(curr)
-            }
+            Err(curr)
         }
     }
 }

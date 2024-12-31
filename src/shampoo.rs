@@ -12,11 +12,11 @@ use libc::{c_char, ftruncate, mmap, off_t, PROT_READ, shm_open, size_t};
 use libc::{O_CREAT, O_EXCL, O_RDWR, S_IRUSR, S_IWUSR};
 use libc::{MAP_SHARED, PROT_WRITE};
 
-use crate::{die, heap};
-use crate::blob::{Blob, BLOB_MAGIC};
+use crate::{die};
+use crate::blob::{Blob};
 use crate::hash::Hash;
 use crate::heap::{Heap, Metadata};
-use crate::shmem::{aload_u64, str, str_to_u64};
+use crate::shmem::str;
 use crate::util::Matrix;
 use crate::util::puts;
 
@@ -68,9 +68,7 @@ impl Shampoo {
             if suicide {
                 die(-10, "Shampoo not initialized. -- try: shampoo init <hash_size> <heap_size>");
             }
-            else {
-                return 0;
-            }
+            return 0;
         }
         fs::metadata(path).unwrap().len()
     }

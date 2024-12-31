@@ -1,6 +1,6 @@
 use fmt::Display;
 use std::fmt::Formatter;
-use std::{fmt, mem};
+use std::{fmt};
 
 use xxhash_rust::xxh3::xxh3_64;
 
@@ -179,11 +179,7 @@ impl Hash {
         xxh3_64(str.as_bytes()) as u32
     }
 
-    pub fn len(&self) -> usize {
-        self.bins as usize * mem::size_of::<Entry>()
-    }
-
-    pub fn print<F>(&self, mut rard: F)
+    pub fn print<F>(&self, rard: F)
         where F : Fn(u64) -> *const Blob
     {
         let mut mat = Matrix::new();

@@ -1,5 +1,5 @@
 use io::stdin;
-use std::{env, io, thread};
+use std::{env, io};
 use std::io::{Read, Write};
 use std::process::exit;
 use std::sync::atomic::Ordering::Relaxed;
