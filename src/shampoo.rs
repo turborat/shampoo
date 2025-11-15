@@ -52,7 +52,6 @@ impl Shampoo {
         Shampoo { heap, hash }
     }
 
-
     pub fn init(hash_size:usize, heap_size:usize) {
         let hash_base = attach("SHAMPOO.hash", hash_size, true);
         Hash::init(hash_base, hash_size);
