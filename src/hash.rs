@@ -70,36 +70,34 @@ impl Hash {
 
         puts(format!("xxhash({}) -> {:x} % {} = bin {}", name, xx, self.bins, bin));
 
-        unsafe {
-            loop {
-                if bin >= self.bins {
-                    return Err(EndOfSegment)
-                }
-
-                // is the bin empty ?
-                let prev_id = self.cas_addr(bin, 0, (*blob).id);
-                if 0 == prev_id {
-                    return Ok(0 as *const Blob);
-                }
-
-                let prev_blob = rard(prev_id);
-
-                // this bin is already overflowed?
-                if bin != (*prev_blob).hash() % self.bins {
-                    return Err(BucketCollision);
-                }
-
-                // is the name the same?
-                if (*blob).name() == (*prev_blob).name() {
-                    puts("hash::put::performing update".to_string());
-                    let prev = self.store_id(bin, (*blob).id);
-                    return Ok(prev as *const Blob);
-                }
-
-                // try next bin
-                bin += 1;
-                puts(format!("hash::put::overflowing to bin {}", bin));
+        loop {
+            if bin >= self.bins {
+                return Err(EndOfSegment)
             }
+
+            // is the bin empty ?
+            let prev_id = self.cas_addr(bin, 0, unsafe { (*blob).id });
+            if 0 == prev_id {
+                return Ok(0 as *const Blob);
+            }
+
+            let prev_blob = rard(prev_id);
+
+            // this bin is already overflowed?
+            if bin != unsafe { (*prev_blob).hash() } % self.bins {
+                return Err(BucketCollision);
+            }
+
+            // is the name the same?
+            if unsafe { (*blob).name() == (*prev_blob).name() } {
+                puts("hash::put::performing update".to_string());
+                let prev = self.store_id(bin, unsafe { (*blob).id });
+                return Ok(prev as *const Blob);
+            }
+
+            // try next bin
+            bin += 1;
+            puts(format!("hash::put::overflowing to bin {}", bin));
         }
     }
 

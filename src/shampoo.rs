@@ -126,7 +126,7 @@ impl Shampoo {
                 }
             }
         });
-        println!("{}", mat);
+        print!("{}", mat);
     }
 
     pub fn dump() {

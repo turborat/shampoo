@@ -24,7 +24,7 @@ pub struct Blob {
 impl fmt::Display for Blob {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let addr = self as *const Blob;
-        write!(f, "@{:x} {} id:{} len:{} '{}' = {}",
+        write!(f, "@{:x} {} {} {} '{}' : {}",
                addr as u64,
                str(addr as *const u8, 4),
                self.id,
@@ -98,7 +98,7 @@ impl Blob {
         let data = self.data();
         if data.is_ascii() {
             let str = String::from_utf8(data).unwrap();
-            format!("\"{}\"", str.trim_end_matches('\n'))
+            format!("'{}'", str.trim_end_matches('\n'))
         } else {
             mag_fmt(data.len() as u64)
         }
