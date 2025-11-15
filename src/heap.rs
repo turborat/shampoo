@@ -98,22 +98,21 @@ impl Heap {
     }
 
     pub fn validate(&self) {
-        unsafe {
-            if aload_u64("heap/magic", (*self.meta).magic.as_mut_ptr() as *const u64) != str_to_u64("HEAP") {
-                panic!("heap not magic");
-            }
+        let meta_magic = unsafe { (*self.meta).magic.as_mut_ptr() };
+        if aload_u64("heap/magic", meta_magic as *const u64) != str_to_u64("HEAP") {
+            panic!("heap not magic");
+        }
 
-            let tail = self.load_tail();
-            let head = self.load_head();
+        let tail = self.load_tail();
+        let head = self.load_head();
 
-            if tail > head {
-                panic!("heap crossed");
-            }
+        if tail > head {
+            panic!("heap crossed");
+        }
 
-            if tail != head {
-                let tail_blob = self.rard(tail);
-                (*tail_blob).validate();
-            }
+        if tail != head {
+            let tail_blob = self.blob_at(tail);
+            tail_blob.validate();
         }
 
         let mut n = 0;
@@ -172,6 +171,10 @@ impl Heap {
 
     pub fn rard(&self, id:u64) -> *const Blob {
         (self.boh + ((id - 1) % (self.eoh - self.boh))) as *const Blob
+    }
+
+    pub fn blob_at(&self, id:u64) -> &Blob {
+        unsafe { &*self.rard(id) }
     }
 
     fn pad_rest_of_heap(&self, head: u64, pad_len: usize) {
