@@ -58,13 +58,11 @@ impl Blob {
             if name.len() > 0 {
                 let name_addr = (blob as *mut u8).add(Blob::header_len());
                 shmem::write(name_addr, name.as_bytes());
-                (*blob).name_len = name.len(); // necessary?
             }
 
             if data.len() > 0 {
                 let data_addr = (blob as *mut u8).add(Blob::header_len() + (*blob).name_len);
                 shmem::write(data_addr, data);
-                (*blob).data_len = data.len();
             }
 
             blob
