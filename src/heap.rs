@@ -160,8 +160,6 @@ impl Heap {
 
             puts(format!("heap::find_block proposing {} .. {} len:{}", self.id_str(begin), self.id_str(end), end-begin));
 
-            Blob::mark_pending(self.rard(begin) as *const u8);
-
             if self.cas_head(begin, end) {
                 puts(format!("heap::find_block::acquired block @{:x}", begin));
                 return Ok((begin, end-begin));
@@ -180,8 +178,6 @@ impl Heap {
         if pad_len < Blob::header_len() {
             panic!("pad failure");
         }
-
-        Blob::mark_pending(self.rard(head) as *const u8);
 
         if self.cas_head(head, head + pad_len as u64) {
             let pad = vec![0u8; pad_len - Blob::header_len()];
@@ -366,7 +362,6 @@ impl Heap {
             assert!(id < head, "something is dreadfully wrong");
 
             let blob = self.rard(id);
-            unsafe { (*blob).wait_for() }
             assert!(blob as u64 <= self.eoh -1);
             assert!(blob as u64 >= self.boh);
             unsafe { (*blob).validate() };
@@ -493,7 +488,7 @@ pub mod tests {
     use crate::heap::{Blob, Heap, Metadata};
     use crate::shampoo::ShampooCondition;
     use crate::shampoo::ShampooCondition::Nothing;
-    use crate::shmem::{inc_ptr, str, str_to_u64};
+    use crate::shmem::{inc_ptr, str};
 
     #[test]
     fn test_allocate() {
@@ -652,17 +647,6 @@ pub mod tests {
         assert_eq!((265, 64), heap.find_block(64).unwrap());
 
         assert_eq!(0, heap.available());
-    }
-
-    #[test]
-    fn test_find_block_pending() {
-        let ram = [0u8; 256];
-        let heap = init_heap(&ram);
-
-        assert_eq!((1, 96), heap.find_block(96).unwrap());
-
-        let blob = heap.rard(1);
-        assert_eq!(str_to_u64("PEND"), unsafe { (*blob).magic() })
     }
 
     #[test]

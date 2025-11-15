@@ -7,6 +7,8 @@ use std::path::Path;
 use std::ptr;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
+use std::thread::sleep;
+use std::time::Duration;
 
 use libc::{c_char, ftruncate, mmap, off_t, PROT_READ, shm_open, size_t};
 use libc::{O_CREAT, O_EXCL, O_RDWR, S_IRUSR, S_IWUSR};
@@ -16,7 +18,6 @@ use crate::{die};
 use crate::blob::{Blob};
 use crate::hash::Hash;
 use crate::heap::{Heap, Metadata};
-use crate::shmem::str;
 use crate::util::Matrix;
 use crate::util::puts;
 
@@ -30,7 +31,6 @@ pub enum ShampooCondition {
     EndOfSegment,
     NoImmediateGarbage,
     CASMiss,
-    Uninitialized,
     Nothing
 }
 
@@ -166,7 +166,7 @@ impl Shampoo {
                 }
             ) {
                 Ok(_) => {
-                    //sleep(Duration::from_micros(100))
+                    sleep(Duration::from_micros(100))
                 },
                 Err(err) => die(-13, &format!("{:?}", err))
             };
