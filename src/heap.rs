@@ -367,8 +367,8 @@ impl Heap {
             assert!(id < head, "something is dreadfully wrong");
 
             let blob = self.blob(id);
-            assert!(blob.ptr() as u64 <= self.eoh -1);
-            assert!(blob.ptr() as u64 >= self.boh);
+            assert!(blob.addr() as u64 <= self.eoh -1);
+            assert!(blob.addr() as u64 >= self.boh);
             blob.validate();
 
             visitor(blob);
@@ -399,7 +399,7 @@ impl Heap {
             mat.add(&format!("id:{}", blob.id));
             mat.add(&format!("@{:x}:{}",
                              self.rard(blob.id) as u64,
-                             blob.ptr() as u64 - self.boh + 1
+                             blob.addr() as u64 - self.boh + 1
                              ));
             mat.add(&format!("#{:x}", (*blob).hash()));
             mat.add(&(*blob).name());
@@ -409,16 +409,16 @@ impl Heap {
             if is_garbage(blob) {
                 flags.push("garbage");
             }
-            if (*blob).id == unsafe { (*self.meta).head } {
+            if blob.id == unsafe { (*self.meta).head } {
                 flags.push("head");
             }
-            if (*blob).id == unsafe { (*self.meta).tail } {
+            if blob.id == unsafe { (*self.meta).tail } {
                 flags.push("tail");
             }
-            if blob.ptr() as u64 == self.boh {
+            if blob.addr() == self.boh {
                 flags.push("boh");
             }
-            if blob.ptr() as u64 == self.eoh {
+            if blob.addr() == self.eoh {
                 flags.push("eoh");
             }
             if flags.is_empty() {
@@ -428,8 +428,7 @@ impl Heap {
                 mat.add(&format!("[{}]", flags.join(" ")));
             }
 
-            mat.add(&(*blob).data_view());
-
+            mat.add(&blob.data_view());
             mat.nl();
         });
 
@@ -753,7 +752,7 @@ pub mod tests {
 
         {
             let mut expected = vec![blob1, blob2, blob3];
-            heap.walk(&mut|blob| assert_eq!(blob.ptr(), expected.remove(0).cast_const()));
+            heap.walk(&mut|blob| assert_eq!(blob as *const Blob, expected.remove(0).cast_const()));
             assert!(expected.is_empty());
         }
 

@@ -70,6 +70,10 @@ impl Blob {
         }
     }
 
+    pub fn addr(&self) -> u64 {
+        self.ptr() as u64
+    }
+
     pub fn ptr(&self) -> *const Blob {
         self
     }

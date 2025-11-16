@@ -191,8 +191,8 @@ impl Shampoo {
        let mut nums: HashMap<String, u32> = HashMap::new();
 
         self.heap.walk(&mut |blob:&Blob| {
-           let start = project(blob.ptr() as u64);
-           let end = project(blob.ptr() as u64 + unsafe { (*blob).len } as u64);
+           let start = project(blob.addr() as u64);
+           let end = project(blob.addr() as u64 + unsafe { (*blob).len } as u64);
            let garbage_offset = if self.is_garbage(blob) { 32 } else { 0 };
 
            let chr = if let Some(num) = nums.get( &unsafe { (*blob).name() }) {
