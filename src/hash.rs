@@ -202,7 +202,7 @@ impl Hash {
             println!("<EMPTY>")
         }
         else {
-            println!("{}", mat);
+            print!("{}", mat);
         }
     }
 

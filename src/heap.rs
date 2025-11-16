@@ -177,7 +177,7 @@ impl Heap {
         unsafe { &*self.rard(id) }
     }
 
-    fn pad_rest_of_heap(&self, head: u64, pad_len: usize) {
+    fn pad_rest_of_heap(&self, head:u64, pad_len:usize) {
         if pad_len < Blob::header_len() {
             panic!("pad failure");
         }
@@ -436,7 +436,7 @@ impl Heap {
         if mat.is_empty() {
             println!("<EMPTY>");
         } else {
-            println!("{}", mat);
+            print!("{}", mat);
         }
     }
 
