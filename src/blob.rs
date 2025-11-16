@@ -88,7 +88,7 @@ impl Blob {
     }
 
     pub fn name(&self) -> String {
-        let loc = inc_ptr(self as *const Blob as *const char, Blob::header_len());
+        let loc = inc_ptr(self.ptr(), Blob::header_len());
         str(loc as *mut u8, self.name_len)
     }
 
