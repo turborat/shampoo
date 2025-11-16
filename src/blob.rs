@@ -12,6 +12,7 @@ pub static BLOB_MAGIC: &str = "BLOB";
 
 #[repr(C)]
 #[derive(Debug)]
+#[derive(PartialEq)]
 pub struct Blob {
     pub magic: [u8;4],
     pub len: usize,

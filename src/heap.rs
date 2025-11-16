@@ -288,9 +288,9 @@ impl Heap {
               G : Fn(*const Blob) -> Result<(), ShampooCondition>
     {
         let report = self.report(is_garbage);
-        let garbage = report.frag_bytes;
-        let mut collected = 0i32;
-        let mut relocated = 0i32;
+        let garbage = report.frag_bytes as u64;
+        let mut collected = 0u64;
+        let mut relocated = 0u64;
 
         if garbage == 0 {
             return Ok(0);
@@ -303,29 +303,27 @@ impl Heap {
         println!("heap::gc::got garbage::{} over {} fragments",
                  mag_fmt(report.frag_bytes as u64), report.frags);
 
-        while collected < garbage as i32 {
+        while collected < garbage {
             let tail = self.load_tail();
-            let blob = self.rard(tail);
-            let id = unsafe { (*blob).id };
-            let len = unsafe { (*blob).len } as i32;
+            let blob = self.blob(tail);
             let relocate = !is_garbage(blob);
 
             if relocate {
-                println!("heap::gc::relocating tail id:{}", id);
+                println!("heap::gc::relocating tail id:{}", blob.id);
                 re_add(blob)?;
                 assert!(is_garbage(blob));
-                relocated += len;
+                relocated += blob.len as u64;
             }
             else {
-                collected += len;
+                collected += blob.len as u64;
             }
 
             match self.gc_tail(is_garbage) {
                 Ok(bytes) => {
                     if !relocate {
-                        let remaining = (garbage as i32 - collected) as u64;
+                        let remaining = garbage - collected;
                         println!("heap::gc_tail::free'd {} from id:{} remaining {}",
-                                 mag_fmt(bytes as u64), id, mag_fmt(remaining));
+                                 mag_fmt(bytes as u64), blob.id, mag_fmt(remaining));
                     }
                 },
                 Err(err) => {
@@ -341,10 +339,10 @@ impl Heap {
         let available = self.available();
 
         println!("heap::gc::complete[free'd:{}({}%) relocated:{}({}%) available:{}({}%)] elapsed:{:?}",
-                 mag_fmt(collected as u64),
-                 100 * collected / self.capacity as i32,
-                 mag_fmt(relocated as u64),
-                 100 * relocated / self.capacity as i32,
+                 mag_fmt(collected),
+                 100 * collected / self.capacity as u64,
+                 mag_fmt(relocated),
+                 100 * relocated / self.capacity as u64,
                  mag_fmt(available as u64),
                  100 * available / self.capacity,
                  start.elapsed());
@@ -367,8 +365,8 @@ impl Heap {
             assert!(id < head, "something is dreadfully wrong");
 
             let blob = self.blob(id);
-            assert!(blob.addr() as u64 <= self.eoh -1);
-            assert!(blob.addr() as u64 >= self.boh);
+            assert!(blob.addr() <= self.eoh -1);
+            assert!(blob.addr() >= self.boh);
             blob.validate();
 
             visitor(blob);
