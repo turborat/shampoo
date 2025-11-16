@@ -204,27 +204,25 @@ impl Hash {
     }
 
     pub fn report<F>(&self, rard:&F) -> HashReport
-    where F : Fn(u64) -> *const Blob
+    where F : Fn(u64) -> &'static Blob
     {
         let mut report = HashReport { used:0, free:0, overflows:0 };
 
-        unsafe {
-            for bin in 0..self.bins {
-                let entry = self.base.add(bin as usize);
+        for bin in 0..self.bins {
+            let entry = unsafe { &(*self.base.add(bin as usize)) };
 
-                if (*entry).id == 0 {
-                    report.free += 1;
-                    continue
-                }
+            if entry.id == 0 {
+                report.free += 1;
+                continue
+            }
 
-                let blob = rard((*entry).id);
-                (*blob).validate();
-                report.used += 1;
+            let blob = rard(entry.id);
+            blob.validate();
+            report.used += 1;
 
-                let orig_bin = (*blob).hash() % self.bins;
-                if bin != orig_bin {
-                    report.overflows += 1;
-                }
+            let orig_bin = blob.hash() % self.bins;
+            if bin != orig_bin {
+                report.overflows += 1;
             }
         }
 
@@ -300,14 +298,14 @@ pub(crate) mod tests {
         let heap = init_heap(&heap_mem);
         let blob = heap.allocate("blob1", "blah".as_bytes()).unwrap();
 
-        let report1 = hash.report(&|id| heap.rard(id));
+        let report1 = hash.report(&|id| heap.blob(id));
         assert_eq!(0, report1.used);
         assert_eq!(4, report1.free);
         assert_eq!(0, report1.overflows);
 
         hash.put(blob, &|id| heap.blob(id)).unwrap();
 
-        let report2 = hash.report(&|id| heap.rard(id));
+        let report2 = hash.report(&|id| heap.blob(id));
         assert_eq!(1, report2.used);
         assert_eq!(3, report2.free);
         assert_eq!(0, report2.overflows);
@@ -333,7 +331,7 @@ pub(crate) mod tests {
             hash.put(blob1, &|id| heap.blob(id)).unwrap();
             hash.put(blob2, &|id| heap.blob(id)).unwrap();
 
-            let report = hash.report(&|id|heap.rard(id));
+            let report = hash.report(&|id|heap.blob(id));
             assert_eq!(2, report.used);
             assert_eq!(2, report.free);
             assert_eq!(1, report.overflows);
