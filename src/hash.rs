@@ -89,7 +89,7 @@ impl Hash {
             }
 
             // is the name the same?
-            if unsafe { (*blob).name() == (*prev_blob).name() } {
+            if unsafe { (*blob).name() } == prev_blob.name() {
                 puts("hash::put::performing update".to_string());
                 let prev = self.store_id(bin, unsafe { (*blob).id });
                 return Ok(prev as *const Blob);
@@ -149,27 +149,21 @@ impl Hash {
     }
 
     fn cas_addr(&self, bin:u32, curr:u64, next:u64) -> u64 {
-        unsafe {
-            let addr = (&(*self.base.add(bin as usize)).id) as *const u64;
-            match cas_u64x(&format!("bin[{}]", bin), addr, curr, next) {
-                Ok(prev) => prev,
-                Err(curr) => curr
-            }
+        let addr = &self.entry_at(bin).id as *const u64;
+        match cas_u64x(&format!("bin[{}]", bin), addr, curr, next) {
+            Ok(prev) => prev,
+            Err(curr) => curr
         }
     }
 
     fn store_id(&self, bin:u32, id:u64) -> u64 {
-        unsafe {
-            let addr = (&(*self.base.add(bin as usize)).id) as *const u64;
-            astore_u64(&format!("bin[{}]", bin), addr, id)
-        }
+        let addr = &self.entry_at(bin).id as *const u64;
+        astore_u64(&format!("bin[{}]", bin), addr, id)
     }
 
     fn load_id(&self, bin:u32) -> u64 {
-        unsafe {
-            let addr = (&(*self.base.add(bin as usize)).id) as *const u64;
-            aload_u64(&format!("bin[{}]", bin), addr)
-        }
+        let addr = &self.entry_at(bin).id as *const u64;
+        aload_u64(&format!("bin[{}]", bin), addr)
     }
 
     pub fn hash(str:&str) -> u32 {
@@ -181,7 +175,7 @@ impl Hash {
     {
         let mut mat = Matrix::new();
         for bin in 0..self.bins {
-            let entry = unsafe { &(*self.base.add(bin as usize)) };
+            let entry = self.entry_at(bin);
             if entry.id != 0 {
                 mat.add(&format!("[{}] ", bin));
                 mat.add(&format!("@{:x} ->", entry as *const Entry as u64));
@@ -203,14 +197,17 @@ impl Hash {
         }
     }
 
+    fn entry_at(&self, bin:u32) -> &'static Entry {
+        unsafe { &(*self.base.add(bin as usize)) }
+    }
+
     pub fn report<F>(&self, rard:&F) -> HashReport
-    where F : Fn(u64) -> &'static Blob
+        where F : Fn(u64) -> &'static Blob
     {
         let mut report = HashReport { used:0, free:0, overflows:0 };
 
         for bin in 0..self.bins {
-            let entry = unsafe { &(*self.base.add(bin as usize)) };
-
+            let entry = self.entry_at(bin);
             if entry.id == 0 {
                 report.free += 1;
                 continue
