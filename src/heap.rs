@@ -241,6 +241,9 @@ impl Heap {
             };
 
             let blob = Blob::init(self.rard(id) as *const u8, name, data, id);
+
+            // unclear why we overwrite len set in Blob::init which contains padding
+            // might be a bug, might not be
             (*blob).len = actual_len as usize;
 
             (*blob).mark_ready();
