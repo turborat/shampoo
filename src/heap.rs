@@ -353,7 +353,7 @@ impl Heap {
     }
 
     pub fn walk<F>(&self, visitor:&mut F)
-        where F: FnMut(*const Blob)
+        where F: FnMut(&Blob)
     {
         let start = Instant::now();
         let mut id = self.load_tail();
@@ -395,44 +395,42 @@ impl Heap {
     {
         let mut mat = Matrix::new();
 
-        self.walk(&mut |blob:*const Blob| {
-            unsafe {
-                mat.add(&format!("id:{}", (*blob).id));
-                mat.add(&format!("@{:x}:{}", 
-                                 self.rard((*blob).id) as u64,
-                                 blob as u64 - self.boh + 1
-                                 ));
-                mat.add(&format!("#{:x}", (*blob).hash()));
-                mat.add(&(*blob).name());
-                mat.add(&mag_fmt((*blob).len as u64));
+        self.walk(&mut |blob:&Blob| {
+            mat.add(&format!("id:{}", blob.id));
+            mat.add(&format!("@{:x}:{}",
+                             self.rard(blob.id) as u64,
+                             blob.ptr() as u64 - self.boh + 1
+                             ));
+            mat.add(&format!("#{:x}", (*blob).hash()));
+            mat.add(&(*blob).name());
+            mat.add(&mag_fmt((*blob).len as u64));
 
-                let mut flags = vec![];
-                if is_garbage(blob) {
-                    flags.push("garbage");
-                }
-                if (*blob).id == (*self.meta).head {
-                    flags.push("head");
-                }
-                if (*blob).id == (*self.meta).tail {
-                    flags.push("tail");
-                }
-                if blob as u64 == self.boh {
-                    flags.push("boh");
-                }
-                if blob as u64 == self.eoh {
-                    flags.push("eoh");
-                }
-                if flags.is_empty() {
-                    mat.add("");
-                }
-                else {
-                    mat.add(&format!("[{}]", flags.join(" ")));
-                }
-
-                mat.add(&(*blob).data_view());
-
-                mat.nl();
+            let mut flags = vec![];
+            if is_garbage(blob) {
+                flags.push("garbage");
             }
+            if (*blob).id == unsafe { (*self.meta).head } {
+                flags.push("head");
+            }
+            if (*blob).id == unsafe { (*self.meta).tail } {
+                flags.push("tail");
+            }
+            if blob.ptr() as u64 == self.boh {
+                flags.push("boh");
+            }
+            if blob.ptr() as u64 == self.eoh {
+                flags.push("eoh");
+            }
+            if flags.is_empty() {
+                mat.add("");
+            }
+            else {
+                mat.add(&format!("[{}]", flags.join(" ")));
+            }
+
+            mat.add(&(*blob).data_view());
+
+            mat.nl();
         });
 
         if mat.is_empty() {
@@ -755,7 +753,7 @@ pub mod tests {
 
         {
             let mut expected = vec![blob1, blob2, blob3];
-            heap.walk(&mut|blob| assert_eq!(blob, expected.remove(0).cast_const()));
+            heap.walk(&mut|blob| assert_eq!(blob.ptr(), expected.remove(0).cast_const()));
             assert!(expected.is_empty());
         }
 
@@ -763,7 +761,7 @@ pub mod tests {
 
         {
             let mut expected = vec![blob2, blob3];
-            heap.walk(&mut |blob| assert_eq!(blob, expected.remove(0).cast_const()));
+            heap.walk(&mut |blob| assert_eq!(blob.ptr(), expected.remove(0).cast_const()));
             assert!(expected.is_empty());
         }
 
@@ -771,7 +769,7 @@ pub mod tests {
 
         {
             let mut expected = vec![blob2, blob3, blob4];
-            heap.walk(&mut |blob| assert_eq!(blob, expected.remove(0).cast_const()));
+            heap.walk(&mut |blob| assert_eq!(blob.ptr(), expected.remove(0).cast_const()));
             assert!(expected.is_empty());
         }
 
@@ -779,7 +777,7 @@ pub mod tests {
 
         {
             let mut expected = vec![blob3, blob4];
-            heap.walk(&mut|blob| assert_eq!(blob, expected.remove(0).cast_const()));
+            heap.walk(&mut|blob| assert_eq!(blob.ptr(), expected.remove(0).cast_const()));
             assert!(expected.is_empty());
         }
 
@@ -787,7 +785,7 @@ pub mod tests {
 
         {
             let mut expected = vec![blob3, blob4, blob5];
-            heap.walk(&mut|blob| assert_eq!(blob, expected.remove(0).cast_const()));
+            heap.walk(&mut|blob| assert_eq!(blob.ptr(), expected.remove(0).cast_const()));
             assert!(expected.is_empty());
         }
     }

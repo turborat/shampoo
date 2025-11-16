@@ -115,7 +115,7 @@ impl Shampoo {
 
     pub fn show_pairs(&self) {
         let mut mat = Matrix::new();
-        self.heap.walk(&mut |blob:*const Blob| {
+        self.heap.walk(&mut |blob:&Blob| {
             unsafe {
                 if !self.is_garbage(blob) {
                     mat.add(&(*blob).name());
@@ -190,9 +190,9 @@ impl Shampoo {
        let mut num = 0;
        let mut nums: HashMap<String, u32> = HashMap::new();
 
-        self.heap.walk(&mut |blob:*const Blob| {
-           let start = project(blob as u64);
-           let end = project(blob as u64 + unsafe { (*blob).len } as u64);
+        self.heap.walk(&mut |blob:&Blob| {
+           let start = project(blob.ptr() as u64);
+           let end = project(blob.ptr() as u64 + unsafe { (*blob).len } as u64);
            let garbage_offset = if self.is_garbage(blob) { 32 } else { 0 };
 
            let chr = if let Some(num) = nums.get( &unsafe { (*blob).name() }) {
