@@ -258,28 +258,25 @@ impl Heap {
             return Err(Nothing)
         }
 
-        let blob = self.rard(tail);
+        let blob = self.blob(tail);
 
-        unsafe { (*blob).validate() };
+        blob.validate();
 
         if !is_garbage(blob) {
             return Err(NoImmediateGarbage)
         }
 
-        unsafe {
-            let id = (*blob).id;
-            assert_eq!(tail, id);
-            let len = (*blob).len;
+        assert_eq!(tail, blob.id);
 
-            if self.cas_tail(id, id + len as u64) {
-                Ok(len)
-            }
-            else {
-                // unclear why this would happen other than
-                // because of multiple concurrent collectors
-                println!("heap::gc_tail::cas miss (WARN)");
-                Err(CASMiss)
-            }
+        if self.cas_tail(blob.id, blob.id + blob.len as u64) {
+            // todo: zero out bytes (maybe) //
+            Ok(blob.len)
+        }
+        else {
+            // unclear why this would happen other than
+            // because of multiple concurrent collectors
+            println!("heap::gc_tail::cas miss (WARN)");
+            Err(CASMiss)
         }
     }
 
