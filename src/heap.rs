@@ -224,7 +224,7 @@ impl Heap {
         format!("{:x}:{}", self.rard(id) as u64, id)
     }
 
-    pub fn allocate(&self, name:&str, data:&[u8]) -> Result<*const Blob, ShampooCondition> {
+    pub fn allocate(&self, name:&str, data:&[u8]) -> Result<&'static Blob, ShampooCondition> {
         unsafe {
             let mut total_len = Blob::header_len() + name.len() + data.len();
             puts(format!("heap::allocate::['{}' -> {} bytes] = {} bytes total", name, data.len(), total_len));
@@ -248,7 +248,7 @@ impl Heap {
 
             (*blob).mark_ready();
 
-            Ok(blob)
+            Ok(&(*blob))
         }
     }
 
@@ -493,22 +493,22 @@ pub mod tests {
         let heap = init_heap(&ram);
 
         let blob1 = heap.allocate("blah", "BLAH".as_bytes()).unwrap();
-        unsafe { assert!(eq(4, (*blob1).magic.as_ptr(), "BLOB".as_ptr())) }
-        unsafe { assert_eq!(56, (*blob1).len) }
-        unsafe { assert_eq!(4, (*blob1).name_len) }
-        unsafe { assert_eq!(4, (*blob1).data_len) }
-        unsafe { assert_eq!("blah", (*blob1).name()) }
-        unsafe { assert_eq!("BLAH".as_bytes(), (*blob1).data()) }
+        assert!(eq(4, blob1.magic.as_ptr(), "BLOB".as_ptr()));
+        assert_eq!(56, blob1.len);
+        assert_eq!(4, blob1.name_len);
+        assert_eq!(4, blob1.data_len);
+        assert_eq!("blah", blob1.name());
+        assert_eq!("BLAH".as_bytes(), blob1.data());
 
         let blob2 = heap.allocate("floped", "datalorder".as_bytes()).unwrap();
-        unsafe { assert!(eq(4, (*blob2).magic.as_ptr(), "BLOB".as_ptr())) }
-        unsafe { assert_eq!(64, (*blob2).len) }
-        unsafe { assert_eq!(6, (*blob2).name_len) }
-        unsafe { assert_eq!(10, (*blob2).data_len) }
-        unsafe { assert_eq!("floped", (*blob2).name()) }
-        unsafe { assert_eq!("datalorder".as_bytes(), (*blob2).data()) }
+        assert!(eq(4, blob2.magic.as_ptr(), "BLOB".as_ptr()));
+        assert_eq!(64, blob2.len);
+        assert_eq!(6, blob2.name_len);
+        assert_eq!(10, blob2.data_len);
+        assert_eq!("floped", blob2.name());
+        assert_eq!("datalorder".as_bytes(), blob2.data());
 
-        unsafe { assert_eq!(blob2 as u64, blob1 as u64 + (*blob1).len as u64) }
+        assert_eq!(blob2.addr(), blob1.addr() + blob1.len as u64);
     }
 
     #[test]
