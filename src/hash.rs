@@ -61,8 +61,8 @@ impl Hash {
         Hash { base: base as *mut Entry, bins: bins as u32 }
     }
 
-    pub fn put<F>(&self, blob:*const Blob, rard:&F) -> Result<*const Blob, ShampooCondition>
-        where F : Fn(u64) -> *const Blob
+    pub fn put<'a, F>(&self, blob:*const Blob, rard:&F) -> Result<*const Blob, ShampooCondition>
+        where F : Fn(u64) -> &'a Blob
     {
         let name = unsafe { (*blob).name() } ;
         let xx = unsafe { (*blob).hash() };
@@ -101,8 +101,8 @@ impl Hash {
         }
     }
 
-    pub fn get<F>(&self, name:&str, rard:F) -> Option<*const Blob>
-        where F : Fn(u64) -> *const Blob
+    pub fn get<'a, F>(&self, name:&str, rard:F) -> Option<*const Blob>
+        where F : Fn(u64) -> &'a Blob
     {
         let xx = Hash::hash(name);
         let orig_bin = xx % self.bins;
@@ -139,8 +139,8 @@ impl Hash {
         }
     }
 
-    pub fn references<F>(&self, blob:*const Blob, rard:F) -> bool
-        where F : Fn(u64) -> *const Blob
+    pub fn references<'a, F>(&self, blob:*const Blob, rard:F) -> bool
+        where F : Fn(u64) -> &'a Blob
     {
         let name = unsafe { (*blob).name() };
         match self.get(&name, rard) {
@@ -177,8 +177,8 @@ impl Hash {
         xxh3_64(str.as_bytes()) as u32
     }
 
-    pub fn print<F>(&self, rard: F)
-        where F : Fn(u64) -> *const Blob
+    pub fn print<'a, F>(&self, rard:F)
+        where F : Fn(u64) -> &'a Blob
     {
         let mut mat = Matrix::new();
         unsafe {
@@ -252,9 +252,9 @@ pub(crate) mod tests {
         let heap = init_heap(&heap_mem);
         let blob_in = heap.allocate("blob1", "blah".as_bytes()).unwrap();
 
-        hash.put(blob_in, &|id| heap.rard(id)).unwrap();
+        hash.put(blob_in, &|id| heap.blob(id)).unwrap();
 
-        let blob_out = hash.get("blob1", &|id| heap.rard(id)).unwrap();
+        let blob_out = hash.get("blob1", &|id| heap.blob(id)).unwrap();
         assert_eq!(blob_in, blob_out.cast_mut());
     }
 
@@ -262,7 +262,7 @@ pub(crate) mod tests {
     fn test_get_nothing() {
         let mem = [0u8; 256];
         let hash = init_hash(&mem, 4);
-        match hash.get("abc", &|id|id as *const Blob) {
+        match hash.get("abc", &|id| panic!("fail")) {
             None => {},
             Some(_) => panic!("fail")
         }
@@ -279,15 +279,15 @@ pub(crate) mod tests {
             let blob1 = heap.allocate("blob", "blah".as_bytes()).unwrap();
             let blob2 = heap.allocate("blob", "blech".as_bytes()).unwrap();
 
-            hash.put(blob1, &|id| heap.rard(id)).unwrap();
-            hash.put(blob2, &|id| heap.rard(id)).unwrap();
+            hash.put(blob1, &|id| heap.blob(id)).unwrap();
+            hash.put(blob2, &|id| heap.blob(id)).unwrap();
 
-            let blob_out = hash.get("blob", &|id| heap.rard(id)).unwrap();
+            let blob_out = hash.get("blob", &|id| heap.blob(id)).unwrap();
             assert_eq!(blob2, blob_out.cast_mut());
             assert_eq!("blech".as_bytes(), (*blob_out).data().as_slice());
 
-            assert!(!hash.references(blob1, &|id| heap.rard(id)));
-            assert!(hash.references(blob2, &|id| heap.rard(id)));
+            assert!(!hash.references(blob1, &|id| heap.blob(id)));
+            assert!(hash.references(blob2, &|id| heap.blob(id)));
         }
     }
 
@@ -311,7 +311,7 @@ pub(crate) mod tests {
         assert_eq!(4, report1.free);
         assert_eq!(0, report1.overflows);
 
-        hash.put(blob, &|id| heap.rard(id)).unwrap();
+        hash.put(blob, &|id| heap.blob(id)).unwrap();
 
         let report2 = hash.report(&|id| heap.rard(id));
         assert_eq!(1, report2.used);
@@ -336,16 +336,16 @@ pub(crate) mod tests {
             assert_eq!(1, hash1 % hash.bins);
             assert_eq!(1, hash2 % hash.bins);
 
-            hash.put(blob1, &|id| heap.rard(id)).unwrap();
-            hash.put(blob2, &|id| heap.rard(id)).unwrap();
+            hash.put(blob1, &|id| heap.blob(id)).unwrap();
+            hash.put(blob2, &|id| heap.blob(id)).unwrap();
 
             let report = hash.report(&|id|heap.rard(id));
             assert_eq!(2, report.used);
             assert_eq!(2, report.free);
             assert_eq!(1, report.overflows);
 
-            assert_eq!("abc".as_bytes(), (*hash.get("blob", &|id|heap.rard(id)).unwrap()).data().as_slice());
-            assert_eq!("xyz".as_bytes(), (*hash.get("blobZ", &|id|heap.rard(id)).unwrap()).data().as_slice());
+            assert_eq!("abc".as_bytes(), (*hash.get("blob", &|id| heap.blob(id)).unwrap()).data().as_slice());
+            assert_eq!("xyz".as_bytes(), (*hash.get("blobZ", &|id| heap.blob(id)).unwrap()).data().as_slice());
         }
     }
 
@@ -358,16 +358,16 @@ pub(crate) mod tests {
         let heap = init_heap(&heap_mem);
         let blob1 = heap.allocate("blob", "blah".as_bytes()).unwrap();
 
-        assert!(!hash.references(blob1, &|id| heap.rard(id)));
+        assert!(!hash.references(blob1, &|id| heap.blob(id)));
 
-        hash.put(blob1, &|id| heap.rard(id)).unwrap();
-        assert!(hash.references(blob1, &|id| heap.rard(id)));
+        hash.put(blob1, &|id| heap.blob(id)).unwrap();
+        assert!(hash.references(blob1, &|id| heap.blob(id)));
 
         let blob2 = heap.allocate("blob", "blech".as_bytes()).unwrap();
-        hash.put(blob2, &|id| heap.rard(id)).unwrap();
+        hash.put(blob2, &|id| heap.blob(id)).unwrap();
 
-        assert!(!hash.references(blob1, &|id| heap.rard(id)));
-        assert!(hash.references(blob2, &|id| heap.rard(id)));
+        assert!(!hash.references(blob1, &|id| heap.blob(id)));
+        assert!(hash.references(blob2, &|id| heap.blob(id)));
     }
 
     #[test]

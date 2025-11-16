@@ -827,17 +827,17 @@ pub mod tests {
         assert_eq!(232, heap.available());
         assert_eq!(1, heap.load_tail());
 
-        let is_garbage = &|id| !hash.references(id, |id| heap.rard(id));
+        let is_garbage = &|id| !hash.references(id, |id| heap.blob(id));
 
         let re_add = &mut|old_blob:*const Blob| {
             let name = unsafe { (*old_blob).name() };
             let data = unsafe { (*old_blob).data() };
             let blob = heap.allocate(&name, &data)?;
-            hash.put(blob, &|id| heap.rard(id))?;
+            hash.put(blob, &|id| heap.blob(id))?;
             Ok(())
         };
 
-        let rard = &|id| heap.rard(id);
+        let rard = &|id| heap.blob(id);
 
         assert_eq!(Ok(0), heap.gc_run(is_garbage, re_add));
 
@@ -846,7 +846,7 @@ pub mod tests {
         heap.print(is_garbage);
         hash.put(heap.allocate("def", "3".as_bytes()).unwrap(), rard).unwrap();
 
-        let report1 = heap.report(&|id| !hash.references(id, |id| heap.rard(id)));
+        let report1 = heap.report(&|id| !hash.references(id, |id| heap.blob(id)));
         assert_eq!(1, report1.frags);
         assert_eq!(56, report1.frag_bytes);
         assert_eq!(2, report1.blobs);
@@ -861,7 +861,7 @@ pub mod tests {
 
         assert_eq!(Ok(56), heap.gc_run(is_garbage, re_add));
 
-        let report2 = heap.report(&|id| !hash.references(id, |id| heap.rard(id)));
+        let report2 = heap.report(&|id| !hash.references(id, |id| heap.blob(id)));
         assert_eq!(0, report2.frags);
         assert_eq!(0, report2.frag_bytes);
         assert_eq!(2, report2.blobs);

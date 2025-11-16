@@ -73,27 +73,31 @@ impl Shampoo {
     }
 
     fn is_garbage(&self, blob:*const Blob) -> bool {
-        !self.hash.references(blob, &|id| self.heap.rard(id))
+        !self.hash.references(blob, &|id| self.heap.blob(id))
     }
 
     fn rard(&self, id:u64) -> *const Blob {
         self.heap.rard(id)
     }
 
+    fn blob(&self, id:u64) -> &Blob {
+        unsafe { &*self.rard(id) }
+    }
+
     pub fn put(&self, name:&str, data:&[u8]) -> Result<(), ShampooCondition> {
         let blob = self.heap.allocate(name, data)?;
-        self.hash.put(blob, &|id|self.rard(id))?;
+        self.hash.put(blob, &|id| self.blob(id))?;
         Ok(())
     }
 
     pub fn get(&self, name:&str) -> Option<Vec<u8>> {
-        let blob = self.hash.get(name, |id| self.rard(id))?;
+        let blob = self.hash.get(name, |id| self.blob(id))?;
         let data = unsafe { (*blob).data() };
         Some(data)
     }
 
     pub fn info(&self) {
-        println!("{}", &self.hash.report(&|id| self.rard(id)));
+        println!("{}", &self.hash.report(&|id| self.blob(id)));
         println!("{}", &self.heap.report(&|blob|self.is_garbage(blob)));
         if VERBOSE.load(Relaxed) {
             self.heap.info();
@@ -101,8 +105,8 @@ impl Shampoo {
     }
 
     pub fn show_hash(&self) {
-        println!("{}", &self.hash.report(&|id| self.rard(id)));
-        self.hash.print(|id| self.rard(id));
+        println!("{}", &self.hash.report(&|id| self.blob(id)));
+        self.hash.print(|id| self.blob(id));
     }
 
     pub fn show_heap(&self) {
