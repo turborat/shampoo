@@ -101,7 +101,7 @@ impl Hash {
         }
     }
 
-    pub fn get<F>(&self, name:&str, rard:F) -> Option<*const Blob>
+    pub fn get<F>(&self, name:&str, rard:F) -> Option<&'static Blob>
         where F : Fn(u64) -> &'static Blob
     {
         let xx = Hash::hash(name);
@@ -143,7 +143,7 @@ impl Hash {
     {
         let name = unsafe { (*blob).name() };
         match self.get(&name, rard) {
-            Some(my_blob) => my_blob == blob,
+            Some(my_blob) => my_blob == unsafe { &(*blob) },
             None => false
         }
     }
@@ -253,7 +253,7 @@ pub(crate) mod tests {
         hash.put(blob_in, &|id| heap.blob(id)).unwrap();
 
         let blob_out = hash.get("blob1", &|id| heap.blob(id)).unwrap();
-        assert_eq!(blob_in, blob_out.cast_mut());
+        assert_eq!(blob_in, blob_out);
     }
 
     #[test]
@@ -268,25 +268,23 @@ pub(crate) mod tests {
 
     #[test]
     fn test_update() {
-        unsafe {
-            let mem = [0u8; 256];
-            let hash = init_hash(&mem, 4);
+        let mem = [0u8; 256];
+        let hash = init_hash(&mem, 4);
 
-            let ram = [0u8; 144];
-            let heap = init_heap(&ram);
-            let blob1 = heap.allocate("blob", "blah".as_bytes()).unwrap();
-            let blob2 = heap.allocate("blob", "blech".as_bytes()).unwrap();
+        let ram = [0u8; 144];
+        let heap = init_heap(&ram);
+        let blob1 = heap.allocate("blob", "blah".as_bytes()).unwrap();
+        let blob2 = heap.allocate("blob", "blech".as_bytes()).unwrap();
 
-            hash.put(blob1, &|id| heap.blob(id)).unwrap();
-            hash.put(blob2, &|id| heap.blob(id)).unwrap();
+        hash.put(blob1, &|id| heap.blob(id)).unwrap();
+        hash.put(blob2, &|id| heap.blob(id)).unwrap();
 
-            let blob_out = hash.get("blob", &|id| heap.blob(id)).unwrap();
-            assert_eq!(blob2, blob_out.cast_mut());
-            assert_eq!("blech".as_bytes(), (*blob_out).data().as_slice());
+        let blob_out = hash.get("blob", &|id| heap.blob(id)).unwrap();
+        assert_eq!(blob2, blob_out);
+        assert_eq!("blech".as_bytes(), (*blob_out).data().as_slice());
 
-            assert!(!hash.references(blob1, &|id| heap.blob(id)));
-            assert!(hash.references(blob2, &|id| heap.blob(id)));
-        }
+        assert!(!hash.references(blob1, &|id| heap.blob(id)));
+        assert!(hash.references(blob2, &|id| heap.blob(id)));
     }
 
     pub fn init_hash(mem:&[u8], bins:u64) -> Hash {

@@ -92,8 +92,7 @@ impl Shampoo {
 
     pub fn get(&self, name:&str) -> Option<Vec<u8>> {
         let blob = self.hash.get(name, |id| self.blob(id))?;
-        let data = unsafe { (*blob).data() };
-        Some(data)
+        Some(blob.data())
     }
 
     pub fn info(&self) {

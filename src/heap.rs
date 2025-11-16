@@ -850,9 +850,9 @@ pub mod tests {
         assert_eq!(1, heap.load_tail());
 
         // check ids..
-        assert_eq!(1, unsafe { (*hash.get("abc", rard).unwrap()).id });
+        assert_eq!(1, hash.get("abc", rard).unwrap().id);
         assert_eq!(1, heap.load_tail());
-        assert_eq!(113, unsafe { (*hash.get("def", rard).unwrap()).id });
+        assert_eq!(113, hash.get("def", rard).unwrap().id);
 
         assert_eq!(Ok(56), heap.gc_run(is_garbage, re_add));
 
@@ -865,9 +865,9 @@ pub mod tests {
         assert_eq!(113, heap.load_tail());
 
         // check ids, abc is re-added, def not
-        assert_eq!(113, unsafe { (*hash.get("def", rard).unwrap()).id });
+        assert_eq!(113, hash.get("def", rard).unwrap().id);
         assert_eq!(113, heap.load_tail());
-        assert_eq!(169, unsafe { (*hash.get("abc", rard).unwrap()).id });
+        assert_eq!(169, hash.get("abc", rard).unwrap().id);
 
         assert_eq!(Ok(0), heap.gc_run(is_garbage, re_add));
     }
