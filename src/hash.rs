@@ -108,34 +108,33 @@ impl Hash {
         let orig_bin = xx % self.bins;
         let mut bin = orig_bin;
 
-        unsafe {
-            loop {
-                if bin >= self.bins {
-                    puts("hash::get::bins depleted, returning".to_string());
-                    return None;
-                }
-
-                let entry = self.base.add(bin as usize);
-
-                if (*entry).id == 0 {
-                    puts("hash::get::bin empty, returning".to_string());
-                    return None;
-                }
-
-                let blob = rard((*entry).id);
-                (*blob).validate();
-
-                if (*blob).hash() % self.bins != orig_bin {
-                    puts("hash::get::overflow over, returning".to_string());
-                    return None;
-                }
-
-                if (*blob).name() == name {
-                    return Some(blob);
-                }
-
-                bin += 1;
+        loop {
+            if bin >= self.bins {
+                puts("hash::get::bins depleted, returning".to_string());
+                return None;
             }
+
+            let entry = unsafe { self.base.add(bin as usize) };
+            let id = unsafe { (*entry).id };
+
+            if id == 0 {
+                puts("hash::get::bin empty, returning".to_string());
+                return None;
+            }
+
+            let blob = rard(id);
+            blob.validate();
+
+            if blob.hash() % self.bins != orig_bin {
+                puts("hash::get::overflow over, returning".to_string());
+                return None;
+            }
+
+            if blob.name() == name {
+                return Some(blob);
+            }
+
+            bin += 1;
         }
     }
 
