@@ -175,7 +175,7 @@ impl Heap {
     }
 
     // id -> &Blob //
-    pub fn blob(&self, id:u64) -> &Blob {
+    pub fn blob(&self, id:u64) -> &'static Blob {
         unsafe { &*self.rard(id) }
     }
 

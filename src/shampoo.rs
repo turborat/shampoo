@@ -80,7 +80,7 @@ impl Shampoo {
         self.heap.rard(id)
     }
 
-    fn blob(&self, id:u64) -> &Blob {
+    fn blob(&self, id:u64) -> &'static Blob {
         unsafe { &*self.rard(id) }
     }
 

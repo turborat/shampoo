@@ -101,8 +101,8 @@ impl Hash {
         }
     }
 
-    pub fn get<'a, F>(&self, name:&str, rard:F) -> Option<*const Blob>
-        where F : Fn(u64) -> &'a Blob
+    pub fn get<F>(&self, name:&str, rard:F) -> Option<*const Blob>
+        where F : Fn(u64) -> &'static Blob
     {
         let xx = Hash::hash(name);
         let orig_bin = xx % self.bins;
@@ -138,8 +138,8 @@ impl Hash {
         }
     }
 
-    pub fn references<'a, F>(&self, blob:*const Blob, rard:F) -> bool
-        where F : Fn(u64) -> &'a Blob
+    pub fn references<F>(&self, blob:*const Blob, rard:F) -> bool
+        where F : Fn(u64) -> &'static Blob
     {
         let name = unsafe { (*blob).name() };
         match self.get(&name, rard) {
