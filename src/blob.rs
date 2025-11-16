@@ -24,10 +24,9 @@ pub struct Blob {
 
 impl fmt::Display for Blob {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let addr = self as *const Blob;
         write!(f, "@{:x} {} {} {} '{}' : {}",
-               addr as u64,
-               str(addr as *const u8, 4),
+               self.addr(),
+               str(self.addr() as *const u8, 4),
                self.id,
                mag_fmt(self.len as u64),
                self.name(),
