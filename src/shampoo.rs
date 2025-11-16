@@ -138,22 +138,22 @@ impl Shampoo {
         let tail = unsafe { (*meta).tail };
         let boh = unsafe { base.add(Metadata::size_of()) } as u64;
         let eoh = unsafe { base.add(heap_size as usize) } as u64;
-        let rard = |id| (boh + ((id - 1) % (eoh - boh))) as *const Blob;
+        let rard = |id| unsafe { &*((boh + ((id - 1) % (eoh - boh))) as *const Blob) };
         let mut id = tail;
 
         println!("boh@{:x} eoh@{:x} tail@{:x} head@{:x}", 
-                 boh, eoh, rard(tail) as u64, rard(head) as u64);
+                 boh, eoh, rard(tail).addr(), rard(head).addr());
 
         while id < head {
             let blob = rard(id);
             if VERBOSE.load(Relaxed) {
-                print!("@{:x} ", blob as u64);
-                unsafe { print!("{:?}\n", (*blob)); }
+                print!("@{:x} ", blob.addr());
+                print!("{:?}\n", blob);
             }
             else {
-                unsafe { print!("{}\n", (*blob)); }
+                print!("{}\n", blob);
             }
-            id += unsafe { (*blob).len } as u64;
+            id += blob.len as u64;
         }
     }
 
