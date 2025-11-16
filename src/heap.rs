@@ -111,7 +111,7 @@ impl Heap {
         }
 
         if tail != head {
-            let tail_blob = self.blob_at(tail);
+            let tail_blob = self.blob(tail);
             tail_blob.validate();
         }
 
@@ -169,11 +169,13 @@ impl Heap {
         }
     }
 
+    // id -> *Blob //
     pub fn rard(&self, id:u64) -> *const Blob {
         (self.boh + ((id - 1) % (self.eoh - self.boh))) as *const Blob
     }
 
-    pub fn blob_at(&self, id:u64) -> &Blob {
+    // id -> &Blob //
+    pub fn blob(&self, id:u64) -> &Blob {
         unsafe { &*self.rard(id) }
     }
 
@@ -364,14 +366,14 @@ impl Heap {
 
             assert!(id < head, "something is dreadfully wrong");
 
-            let blob = self.rard(id);
-            assert!(blob as u64 <= self.eoh -1);
-            assert!(blob as u64 >= self.boh);
-            unsafe { (*blob).validate() };
+            let blob = self.blob(id);
+            assert!(blob.ptr() as u64 <= self.eoh -1);
+            assert!(blob.ptr() as u64 >= self.boh);
+            blob.validate();
 
             visitor(blob);
 
-            let len = unsafe { (*blob).len } as u64;
+            let len = blob.len as u64;
             id += len;
         }
 

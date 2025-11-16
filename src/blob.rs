@@ -43,6 +43,7 @@ impl Blob {
 
         let len = Blob::header_len() + name.len() + data.len();
         let pad = if len % 8 > 0 { 8 - len % 8 } else { 0 };
+        //assert_eq!(0 ,pad);
 
         unsafe {
             let blob = addr as *mut Blob;
@@ -67,6 +68,10 @@ impl Blob {
 
             blob
         }
+    }
+
+    pub fn ptr(&self) -> *const Blob {
+        self
     }
 
     pub fn mark_ready(&self) {
