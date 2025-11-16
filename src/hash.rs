@@ -180,21 +180,19 @@ impl Hash {
         where F : Fn(u64) -> &'a Blob
     {
         let mut mat = Matrix::new();
-        unsafe {
-            for bin in 0..self.bins {
-                let entry = self.base.add(bin as usize);
-                if (*entry).id != 0 {
-                    mat.add(&format!("[{}] ", bin));
-                    mat.add(&format!("@{:x} ->", entry as u64));
-                    mat.add(&format!("id:{}", (*entry).id));
+        for bin in 0..self.bins {
+            let entry = unsafe { &(*self.base.add(bin as usize)) };
+            if entry.id != 0 {
+                mat.add(&format!("[{}] ", bin));
+                mat.add(&format!("@{:x} ->", entry as *const Entry as u64));
+                mat.add(&format!("id:{}", entry.id));
 
-                    let blob = rard((*entry).id);
-                    let should_be_bin = &(*blob).hash() % self.bins;
-                    if should_be_bin != bin {
-                        mat.add(&format!("(actually [{}])", should_be_bin));
-                    }
-                    mat.nl();
+                let blob = rard(entry.id);
+                let should_be_bin = blob.hash() % self.bins;
+                if should_be_bin != bin {
+                    mat.add(&format!("(actually [{}])", should_be_bin));
                 }
+                mat.nl();
             }
         }
         if mat.is_empty() {

@@ -19,7 +19,7 @@ pub struct Blob {
     pub name_len: usize,
     pub data_len: usize,
     pub id: u64,
-    pad: [u8;8]
+    pad: [u8;8]     // necessary??
 }
 
 impl fmt::Display for Blob {
