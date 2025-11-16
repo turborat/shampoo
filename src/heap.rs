@@ -397,13 +397,10 @@ impl Heap {
 
         self.walk(&mut |blob:&Blob| {
             mat.add(&format!("id:{}", blob.id));
-            mat.add(&format!("@{:x}:{}",
-                             self.rard(blob.id) as u64,
-                             blob.addr() as u64 - self.boh + 1
-                             ));
-            mat.add(&format!("#{:x}", (*blob).hash()));
-            mat.add(&(*blob).name());
-            mat.add(&mag_fmt((*blob).len as u64));
+            mat.add(&format!("@{:x}:{}", blob.addr(), blob.addr() - self.boh));
+            mat.add(&format!("#{:x}", blob.hash()));
+            mat.add(&blob.name());
+            mat.add(&mag_fmt(blob.len as u64));
 
             let mut flags = vec![];
             if is_garbage(blob) {
