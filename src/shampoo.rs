@@ -120,13 +120,11 @@ impl Shampoo {
     pub fn show_pairs(&self) {
         let mut mat = Matrix::new();
         self.heap.walk(&mut |blob:&Blob| {
-            unsafe {
-                if !self.is_garbage(blob) {
-                    mat.add(&(*blob).name());
-                    mat.add(&":");
-                    mat.add(&(*blob).data_view());
-                    mat.nl();
-                }
+            if !self.is_garbage(blob) {
+                mat.add(&blob.name());
+                mat.add(&":");
+                mat.add(&blob.data_view());
+                mat.nl();
             }
         });
         print!("{}", mat);
@@ -195,16 +193,16 @@ impl Shampoo {
        let mut nums: HashMap<String, u32> = HashMap::new();
 
         self.heap.walk(&mut |blob:&Blob| {
-           let start = project(blob.addr() as u64);
-           let end = project(blob.addr() as u64 + unsafe { (*blob).len } as u64);
+           let start = project(blob.addr());
+           let end = project(blob.addr() + blob.len as u64);
            let garbage_offset = if self.is_garbage(blob) { 32 } else { 0 };
 
-           let chr = if let Some(num) = nums.get( &unsafe { (*blob).name() }) {
+           let chr = if let Some(num) = nums.get(&blob.name()) {
                char::from_u32('A' as u32 + num + garbage_offset)
            }
            else {
                let my_num = num;
-               nums.insert(unsafe { (*blob).name() }, num);
+               nums.insert(blob.name(), num);
                num += 1;
                if num > 'Z' as u32 - 'A' as u32  {
                    num = 0;

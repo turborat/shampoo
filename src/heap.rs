@@ -117,7 +117,7 @@ impl Heap {
 
         let mut n = 0;
         self.walk(&mut|blob|  {
-            unsafe { (*blob).validate() };
+            blob.validate();
             n+=1;
         });
 
@@ -452,12 +452,12 @@ impl Heap {
         };
 
         self.walk(&mut |blob| {
-            if is_garbage(blob) || unsafe { (*blob).name() }.is_empty() {
+            if is_garbage(blob) || blob.name().is_empty() {
                 report.frags += 1;
-                report.frag_bytes += unsafe { (*blob).len };
+                report.frag_bytes += blob.len;
             } else {
                 report.blobs += 1;
-                report.blob_bytes += unsafe { (*blob).len };
+                report.blob_bytes += blob.len;
             }
         } );
 

@@ -84,7 +84,7 @@ impl Hash {
             let prev_blob = rard(prev_id);
 
             // this bin is already overflowed?
-            if bin != unsafe { (*prev_blob).hash() } % self.bins {
+            if bin != prev_blob.hash() % self.bins {
                 return Err(BucketCollision);
             }
 
@@ -239,7 +239,6 @@ impl Hash {
 #[cfg(test)]
 pub(crate) mod tests {
     use heap::tests::init_heap;
-    use crate::blob::Blob;
     use crate::hash::Hash;
     use crate::heap;
 
@@ -262,7 +261,7 @@ pub(crate) mod tests {
     fn test_get_nothing() {
         let mem = [0u8; 256];
         let hash = init_hash(&mem, 4);
-        match hash.get("abc", &|id| panic!("fail")) {
+        match hash.get("abc", &|_id| panic!("fail")) {
             None => {},
             Some(_) => panic!("fail")
         }
