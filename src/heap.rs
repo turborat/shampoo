@@ -224,7 +224,7 @@ impl Heap {
         format!("{:x}:{}", self.rard(id) as u64, id)
     }
 
-    pub fn allocate(&self, name:&str, data:&[u8]) -> Result<*mut Blob, ShampooCondition> {
+    pub fn allocate(&self, name:&str, data:&[u8]) -> Result<*const Blob, ShampooCondition> {
         unsafe {
             let mut total_len = Blob::header_len() + name.len() + data.len();
             puts(format!("heap::allocate::['{}' -> {} bytes] = {} bytes total", name, data.len(), total_len));
@@ -528,7 +528,7 @@ pub mod tests {
         assert_eq!(488, report_b.capacity);
         assert_eq!(312, report_b.available);
 
-        let report_b = heap.report(&|blob| blob == blob2.cast_const());
+        let report_b = heap.report(&|blob| blob == blob2);
         assert_eq!(2, report_b.blobs);
         assert_eq!(1, report_b.frags);
         assert_eq!(120, report_b.blob_bytes);
@@ -747,7 +747,7 @@ pub mod tests {
 
         {
             let mut expected = vec![blob1, blob2, blob3];
-            heap.walk(&mut|blob| assert_eq!(blob as *const Blob, expected.remove(0).cast_const()));
+            heap.walk(&mut|blob| assert_eq!(blob as *const Blob, expected.remove(0)));
             assert!(expected.is_empty());
         }
 
@@ -755,7 +755,7 @@ pub mod tests {
 
         {
             let mut expected = vec![blob2, blob3];
-            heap.walk(&mut |blob| assert_eq!(blob.ptr(), expected.remove(0).cast_const()));
+            heap.walk(&mut |blob| assert_eq!(blob.ptr(), expected.remove(0)));
             assert!(expected.is_empty());
         }
 
@@ -763,7 +763,7 @@ pub mod tests {
 
         {
             let mut expected = vec![blob2, blob3, blob4];
-            heap.walk(&mut |blob| assert_eq!(blob.ptr(), expected.remove(0).cast_const()));
+            heap.walk(&mut |blob| assert_eq!(blob.ptr(), expected.remove(0)));
             assert!(expected.is_empty());
         }
 
@@ -771,7 +771,7 @@ pub mod tests {
 
         {
             let mut expected = vec![blob3, blob4];
-            heap.walk(&mut|blob| assert_eq!(blob.ptr(), expected.remove(0).cast_const()));
+            heap.walk(&mut|blob| assert_eq!(blob.ptr(), expected.remove(0)));
             assert!(expected.is_empty());
         }
 
@@ -779,7 +779,7 @@ pub mod tests {
 
         {
             let mut expected = vec![blob3, blob4, blob5];
-            heap.walk(&mut|blob| assert_eq!(blob.ptr(), expected.remove(0).cast_const()));
+            heap.walk(&mut|blob| assert_eq!(blob.ptr(), expected.remove(0)));
             assert!(expected.is_empty());
         }
     }
