@@ -158,14 +158,14 @@ mod tests {
         let ram = [0u8; 1 << 8];
         let blob = Blob::init(ram.as_ptr(), "", &[], 0, 48);
         blob.validate();
-        assert_eq!(Blob::header_len(), unsafe { (*blob).len });
+        assert_eq!(Blob::header_len(), blob.len);
     }
 
     #[test]
     fn test_hash() {
         let ram = [0u8; 1 << 8];
         let blob = Blob::init(ram.as_ptr(), "abc", &[], 0, 56);
-        assert_eq!(Hash::hash("abc"), unsafe { (*blob).hash() });
-        assert_eq!(2301573456, unsafe { (*blob).hash() });
+        assert_eq!(Hash::hash("abc"), blob.hash());
+        assert_eq!(2301573456, blob.hash());
     }
 }

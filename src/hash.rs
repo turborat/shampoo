@@ -51,18 +51,18 @@ impl HashReport {
 impl Hash {
     pub fn attach(base:*const u8, hash_size:u64) -> Self {
         let bins = hash_size / 8;
-        puts(format!("init_hash @{:x} {} bins", base as u64, bins));
+        puts(format!("hash::attach @{:x} {} bins", base as u64, bins));
         Hash { base: base as *mut Entry, bins: bins as u32 }
     }
 
     pub fn init(base:*const u8, hash_size:usize) -> Self {
         let bins = hash_size / 8;
-        println!("Initialized hash table with {} bins", bins);
+        println!("hash::init table with {} bins", bins);
         Hash { base: base as *mut Entry, bins: bins as u32 }
     }
 
-    pub fn put<'a, F>(&self, blob:*const Blob, rard:&F) -> Result<*const Blob, ShampooCondition>
-        where F : Fn(u64) -> &'a Blob
+    pub fn put<F>(&self, blob:*const Blob, rard:&F) -> Result<*const Blob, ShampooCondition>
+        where F : Fn(u64) -> &'static Blob
     {
         let name = unsafe { (*blob).name() } ;
         let xx = unsafe { (*blob).hash() };
@@ -310,32 +310,30 @@ pub(crate) mod tests {
 
     #[test]
     fn test_overflow() {
-        unsafe {
-            let hash_mem = [0u8; 256];
-            let hash = init_hash(&hash_mem, 4);
-            let heap_mem = [0u8; 256];
-            let heap = init_heap(&heap_mem);
-            let blob1 = heap.allocate("blob", "abc".as_bytes()).unwrap();
-            let blob2 = heap.allocate("blobZ", "xyz".as_bytes()).unwrap();
+        let hash_mem = [0u8; 256];
+        let hash = init_hash(&hash_mem, 4);
+        let heap_mem = [0u8; 256];
+        let heap = init_heap(&heap_mem);
+        let blob1 = heap.allocate("blob", "abc".as_bytes()).unwrap();
+        let blob2 = heap.allocate("blobZ", "xyz".as_bytes()).unwrap();
 
-            let hash1 = blob1.hash();
-            let hash2 = blob2.hash();
-            assert_ne!(hash1, hash2);
+        let hash1 = blob1.hash();
+        let hash2 = blob2.hash();
+        assert_ne!(hash1, hash2);
 
-            assert_eq!(1, hash1 % hash.bins);
-            assert_eq!(1, hash2 % hash.bins);
+        assert_eq!(1, hash1 % hash.bins);
+        assert_eq!(1, hash2 % hash.bins);
 
-            hash.put(blob1, &|id| heap.blob(id)).unwrap();
-            hash.put(blob2, &|id| heap.blob(id)).unwrap();
+        hash.put(blob1, &|id| heap.blob(id)).unwrap();
+        hash.put(blob2, &|id| heap.blob(id)).unwrap();
 
-            let report = hash.report(&|id|heap.blob(id));
-            assert_eq!(2, report.used);
-            assert_eq!(2, report.free);
-            assert_eq!(1, report.overflows);
+        let report = hash.report(&|id|heap.blob(id));
+        assert_eq!(2, report.used);
+        assert_eq!(2, report.free);
+        assert_eq!(1, report.overflows);
 
-            assert_eq!("abc".as_bytes(), (*hash.get("blob", &|id| heap.blob(id)).unwrap()).data().as_slice());
-            assert_eq!("xyz".as_bytes(), (*hash.get("blobZ", &|id| heap.blob(id)).unwrap()).data().as_slice());
-        }
+        assert_eq!("abc".as_bytes(), (*hash.get("blob", &|id| heap.blob(id)).unwrap()).data().as_slice());
+        assert_eq!("xyz".as_bytes(), (*hash.get("blobZ", &|id| heap.blob(id)).unwrap()).data().as_slice());
     }
 
     #[test]

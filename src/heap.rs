@@ -189,7 +189,7 @@ impl Heap {
             let addr = self.rard(head) as *const u8;
             //race:
             let blob = Blob::init(addr, "", &pad, head, pad_len as u64);
-            assert_eq!(self.eoh, blob.addr() + unsafe { (*blob).len } as u64);
+            assert_eq!(self.eoh, blob.addr() + blob.len as u64);
         } else {
             puts(format!("heap::pad::WARN::pad did not succeed. hoping for best"));
         }
@@ -224,25 +224,23 @@ impl Heap {
     }
 
     pub fn allocate(&self, name:&str, data:&[u8]) -> Result<&'static Blob, ShampooCondition> {
-        unsafe {
-            let mut total_len = Blob::header_len() + name.len() + data.len();
-            puts(format!("heap::allocate::['{}' -> {} bytes] = {} bytes total", name, data.len(), total_len));
+        let mut total_len = Blob::header_len() + name.len() + data.len();
+        puts(format!("heap::allocate::['{}' -> {} bytes] = {} bytes total", name, data.len(), total_len));
 
-            if total_len % 8 != 0 {
-                let pad = 8 - (total_len % 8);
-                puts(format!("heap::allocate::padding block {} + {} = {}", total_len, pad, total_len + pad));
-                total_len += pad;
-            };
+        if total_len % 8 != 0 {
+            let pad = 8 - (total_len % 8);
+            puts(format!("heap::allocate::padding block {} + {} = {}", total_len, pad, total_len + pad));
+            total_len += pad;
+        };
 
-            let (id, actual_len) = match self.find_block(total_len) {
-                Ok((id, actual_len)) => (id, actual_len),
-                Err(err) => return Err(err)
-            };
+        let (id, actual_len) = match self.find_block(total_len) {
+            Ok((id, actual_len)) => (id, actual_len),
+            Err(err) => return Err(err)
+        };
 
-            let blob = Blob::init(self.rard(id) as *const u8, name, data, id, actual_len);
+        let blob = Blob::init(self.rard(id) as *const u8, name, data, id, actual_len);
 
-            Ok(&(*blob))
-        }
+        Ok(blob)
     }
 
     pub fn gc_tail<F>(&self, is_garbage:&F) -> Result<usize, ShampooCondition>
@@ -646,14 +644,14 @@ pub mod tests {
         assert_eq!(264, heap.available());
 
         let b1 = heap.allocate("b1", &[0u8;40]).unwrap();
-        assert_eq!(96, unsafe { (*b1).len });
+        assert_eq!(96, b1.len);
         assert_eq!(168, heap.available());
 
         let b2 = heap.allocate("b2", &[0u8;40]).unwrap();
-        assert_eq!(96, unsafe { (*b2).len });
+        assert_eq!(96, b2.len);
         assert_eq!(72, heap.available());
 
-        assert_eq!(unsafe { (*b2).id + (*b2).len as u64 }, unsafe { (*heap.meta).head });
+        assert_eq!(b2.id + b2.len as u64, unsafe { (*heap.meta).head });
         assert_eq!(Err(AllocationFailure), heap.allocate("b3", &[0u8;40]));
 
         heap.print(&|_blob|true);
@@ -662,7 +660,7 @@ pub mod tests {
         assert_eq!(72 + 96, heap.available());
 
         let b3 = heap.allocate("b3", &[0u8;40]).unwrap();
-        assert_eq!(96, unsafe { (*b3).len });
+        assert_eq!(96, b3.len);
         assert_eq!(0, heap.available());
         assert_eq!(b1, b3);
 
