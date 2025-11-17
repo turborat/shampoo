@@ -46,34 +46,37 @@ impl Blob {
         }
 
         if len % 8 != 0 {
-            panic!("alignment {}", len )
+            panic!("alignment ({})", len )
         }
 
-        unsafe {
-            let blob = addr as *mut Blob;
-            (*blob).magic = [0,0,0,0];
-            (*blob).name_len = name.len();
-            (*blob).data_len = data.len();
-            (*blob).len = len as usize;
-            (*blob).id = id;
+        let ptr = addr as *mut Blob;
+        let blob = unsafe { &mut (*ptr) };
+        blob.magic = [0,0,0,0];
+        blob.name_len = name.len();
+        blob.data_len = data.len();
+        blob.len = len as usize;
+        blob.id = id;
 
-            assert_eq!(0, (*blob).len % 8);
-
-            // if we are padding name will be blank
-            if name.len() > 0 {
-                let name_addr = (blob as *mut u8).add(Blob::header_len());
-                shmem::write(name_addr, name.as_bytes());
-            }
-
-            if data.len() > 0 {
-                let data_addr = (blob as *mut u8).add(Blob::header_len() + (*blob).name_len);
-                shmem::write(data_addr, data);
-            }
-
-            (*blob).mark_ready();
-
-            &(*blob)
+        // if we are padding name will be blank //
+        if name.len() > 0 {
+            let name_addr = blob.addr() + Blob::header_len() as u64;
+            shmem::write(name_addr as *mut u8, name.as_bytes());
         }
+
+        if data.len() > 0 {
+            let data_addr = blob.addr() + Blob::header_len() as u64 + blob.name_len as u64;
+            shmem::write(data_addr as *mut u8, data);
+        }
+
+        // mark ready //
+        if !cas_u64("blob", ptr as *const u64, 0u64, str_to_u64(BLOB_MAGIC)) {
+            panic!("!blanked");
+        }
+
+        puts(format!("++ {:?}", blob));
+        puts(format!("++ {}", blob));
+
+        blob
     }
 
     pub fn addr(&self) -> u64 {
@@ -84,17 +87,8 @@ impl Blob {
         self
     }
 
-    pub fn mark_ready(&self) {
-        let addr = self.magic.as_ptr() as *const u64;
-        if !cas_u64("blob", addr, 0u64, str_to_u64(BLOB_MAGIC)) {
-            panic!("!blanked");
-        }
-        puts(format!("++ {:?}", self));
-        puts(format!("++ {}", self));
-    }
-
     pub fn name(&self) -> String {
-        let loc = inc_ptr(self.ptr(), Blob::header_len());
+        let loc = self.addr() + Blob::header_len() as u64;
         str(loc as *mut u8, self.name_len)
     }
 
