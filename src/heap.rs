@@ -188,9 +188,8 @@ impl Heap {
             let pad = vec![0u8; pad_len - Blob::header_len()];
             let addr = self.rard(head) as *const u8;
             //race:
-            let blob = Blob::init(addr, "", &pad, head);
-            unsafe { (*blob).mark_ready() };
-            assert_eq!(self.eoh, blob as u64 + unsafe { (*blob).len } as u64);
+            let blob = Blob::init(addr, "", &pad, head, pad_len as u64);
+            assert_eq!(self.eoh, blob.addr() + unsafe { (*blob).len } as u64);
         } else {
             puts(format!("heap::pad::WARN::pad did not succeed. hoping for best"));
         }
@@ -240,13 +239,7 @@ impl Heap {
                 Err(err) => return Err(err)
             };
 
-            let blob = Blob::init(self.rard(id) as *const u8, name, data, id);
-
-            // unclear why we overwrite len set in Blob::init which contains padding
-            // might be a bug, might not be
-            (*blob).len = actual_len as usize;
-
-            (*blob).mark_ready();
+            let blob = Blob::init(self.rard(id) as *const u8, name, data, id, actual_len);
 
             Ok(&(*blob))
         }

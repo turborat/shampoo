@@ -318,8 +318,8 @@ pub(crate) mod tests {
             let blob1 = heap.allocate("blob", "abc".as_bytes()).unwrap();
             let blob2 = heap.allocate("blobZ", "xyz".as_bytes()).unwrap();
 
-            let hash1 = (*blob1).hash();
-            let hash2 = (*blob2).hash();
+            let hash1 = blob1.hash();
+            let hash2 = blob2.hash();
             assert_ne!(hash1, hash2);
 
             assert_eq!(1, hash1 % hash.bins);

@@ -36,21 +36,25 @@ impl fmt::Display for Blob {
 }
 
 impl Blob {
-    pub fn init(addr:*const u8, name:&str, data:&[u8], id:u64) -> *mut Blob {
+    pub fn init(addr:*const u8, name:&str, data:&[u8], id:u64, len:u64) -> &'static Blob {
+        if len < (Blob::header_len() + name.len() + data.len()) as u64 {
+            panic!("overflow ({})", Blob::header_len() + name.len() + data.len())
+        }
+
         if addr as u64 % 8 != 0 {
             panic!("malign pointer @{:x}", addr as u64)
         }
 
-        let len = Blob::header_len() + name.len() + data.len();
-        let pad = if len % 8 > 0 { 8 - len % 8 } else { 0 };
-        //assert_eq!(0 ,pad);
+        if len % 8 != 0 {
+            panic!("alignment {}", len )
+        }
 
         unsafe {
             let blob = addr as *mut Blob;
             (*blob).magic = [0,0,0,0];
             (*blob).name_len = name.len();
             (*blob).data_len = data.len();
-            (*blob).len = len + pad;
+            (*blob).len = len as usize;
             (*blob).id = id;
 
             assert_eq!(0, (*blob).len % 8);
@@ -66,7 +70,9 @@ impl Blob {
                 shmem::write(data_addr, data);
             }
 
-            blob
+            (*blob).mark_ready();
+
+            &(*blob)
         }
     }
 
@@ -142,34 +148,29 @@ mod tests {
 
     #[test]
     fn test_init() {
-        unsafe {
-            let ram = [0u8; 1 << 8];
-            let blob = Blob::init(ram.as_ptr(), "bob", &[9u8; 16], 123);
-            (*blob).mark_ready();
-            (*blob).validate();
-            assert_eq!("BLOB", str((*blob).magic.as_ptr(), 4));
-            assert_eq!(72, (*blob).len);
-            assert_eq!(3, (*blob).name_len);
-            assert_eq!(16, (*blob).data_len);
-            assert_eq!(123, (*blob).id); // obvs not realistic
-            assert_eq!("bob", (*blob).name());
-            assert_eq!(vec![9u8; 16], (*blob).data());
-        }
+        let ram = [0u8; 1 << 9];
+        let blob = Blob::init(ram.as_ptr(), "bob", &[9u8; 16], 123, 72);
+        assert_eq!("BLOB", str(blob.magic.as_ptr(), 4));
+        assert_eq!(72, blob.len);
+        assert_eq!(3, blob.name_len);
+        assert_eq!(16, blob.data_len);
+        assert_eq!(123, blob.id); // obvs not realistic
+        assert_eq!("bob", blob.name());
+        assert_eq!(vec![9u8; 16], blob.data());
     }
 
     #[test]
     fn test_init2() {
         let ram = [0u8; 1 << 8];
-        let blob = Blob::init(ram.as_ptr(), "", &[], 0);
-        unsafe { (*blob).mark_ready() };
-        unsafe { (*blob).validate() };
+        let blob = Blob::init(ram.as_ptr(), "", &[], 0, 48);
+        blob.validate();
         assert_eq!(Blob::header_len(), unsafe { (*blob).len });
     }
 
     #[test]
     fn test_hash() {
         let ram = [0u8; 1 << 8];
-        let blob = Blob::init(ram.as_ptr(), "abc", &[], 0);
+        let blob = Blob::init(ram.as_ptr(), "abc", &[], 0, 56);
         assert_eq!(Hash::hash("abc"), unsafe { (*blob).hash() });
         assert_eq!(2301573456, unsafe { (*blob).hash() });
     }
