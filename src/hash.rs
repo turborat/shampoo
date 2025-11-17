@@ -51,13 +51,13 @@ impl HashReport {
 impl Hash {
     pub fn attach(base:*const u8, hash_size:u64) -> Self {
         let bins = hash_size / 8;
-        puts(format!("hash::attach @{:x} {} bins", base as u64, bins));
+        puts(format!("hash::attach@{:x} {} bins", base as u64, bins));
         Hash { base: base as *mut Entry, bins: bins as u32 }
     }
 
     pub fn init(base:*const u8, hash_size:usize) -> Self {
         let bins = hash_size / 8;
-        println!("hash::init table with {} bins", bins);
+        println!("hash::init::table with {} bins", bins);
         Hash { base: base as *mut Entry, bins: bins as u32 }
     }
 
@@ -170,8 +170,8 @@ impl Hash {
         xxh3_64(str.as_bytes()) as u32
     }
 
-    pub fn print<'a, F>(&self, rard:F)
-        where F : Fn(u64) -> &'a Blob
+    pub fn print<F>(&self, rard:F)
+        where F : Fn(u64) -> &'static Blob
     {
         let mut mat = Matrix::new();
         for bin in 0..self.bins {
