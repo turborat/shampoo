@@ -3,6 +3,8 @@ use std::{env, io};
 use std::io::{Read, Write};
 use std::process::exit;
 use std::sync::atomic::Ordering::Relaxed;
+use std::thread::sleep;
+use std::time::Duration;
 
 use crate::shampoo::{Shampoo, ShampooCondition};
 use crate::shmem::str;
@@ -79,10 +81,18 @@ pub fn run(mut args:Vec<String>) {
         "dump"      => Shampoo::dump(),
         "map"       => Shampoo::attach().map(),
         "gc" => {
-            match Shampoo::attach().gc() {
-                Err(err) => die(-6, &format!("{:?}", err)),
-                _ => panic!("this should never happen")
-            };
+            let shampoo = Shampoo::attach();
+            if args.len() < 3 {
+                shampoo.gc();
+            }
+            else {
+                println!("shampoo::gc::loop starting");
+                loop {
+                    let sleepNs = (args[2].parse::<f64>().unwrap() * 1000000000.0) as u64;
+                    shampoo.gc();
+                    sleep(Duration::from_nanos(sleepNs));
+                }
+            }
         }
         "stress"   => {
             let shampoo = Shampoo::attach();

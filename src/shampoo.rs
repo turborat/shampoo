@@ -148,19 +148,13 @@ impl Shampoo {
         }
     }
 
-    pub fn gc(&self) -> Result<(), ShampooCondition> {
-        println!("shampoo::gc::loop starting");
-        loop {
-            match self.heap.gc_run(
-                &mut|blob| self.is_garbage(blob),
-                &mut|blob| unsafe {
-                    self.put(&(*blob).name(), &(*blob).data())
-                }
-            ) {
-                Ok(_) => sleep(Duration::from_micros(100)),
-                Err(err) => die(-13, &format!("{:?}", err))
-            };
-        }
+    pub fn gc(&self) {
+        self.heap.gc_run(
+            &mut|blob| self.is_garbage(blob),
+            &mut|blob| unsafe {
+                self.put(&(*blob).name(), &(*blob).data())
+            }
+        ).unwrap();
     }
 
     pub fn validate(&self) {

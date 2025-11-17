@@ -45,7 +45,7 @@ pub struct HeapReport {
 
 impl fmt::Display for HeapReport {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "HEAP blobs:{:?}({}) fragments:{:?}({}) -> {}% garbage / {} available",
+        write!(f, "heap::info[blobs:{:?}({}) fragments:{:?}({}) -> {}% garbage / {} available]",
                  self.blobs,
                  mag_fmt(self.blob_bytes as u64),
                  self.frags,
@@ -283,16 +283,16 @@ impl Heap {
         let mut collected = 0u64;
         let mut relocated = 0u64;
 
+        println!("{}", report);
+
         if garbage == 0 {
             return Ok(0);
         }
 
         let start = Instant::now();
 
-        println!("{}", report);
-
-        println!("heap::gc::got garbage::{} over {} fragments",
-                 mag_fmt(report.frag_bytes as u64), report.frags);
+        puts(format!("heap::gc::got garbage::{} over {} fragments",
+                 mag_fmt(report.frag_bytes as u64), report.frags));
 
         while collected < garbage {
             let tail = self.load_tail();
@@ -300,7 +300,7 @@ impl Heap {
             let relocate = !is_garbage(blob);
 
             if relocate {
-                println!("heap::gc::relocating tail id:{}", blob.id);
+                puts(format!("heap::gc::relocating tail id:{}", blob.id));
                 re_add(blob)?;
                 assert!(is_garbage(blob));
                 relocated += blob.len as u64;
@@ -313,8 +313,8 @@ impl Heap {
                 Ok(bytes) => {
                     if !relocate {
                         let remaining = garbage - collected;
-                        println!("heap::gc_tail::free'd {} from id:{} remaining {}",
-                                 mag_fmt(bytes as u64), blob.id, mag_fmt(remaining));
+                        puts(format!("heap::gc_tail::free'd {} from id:{} remaining {}",
+                                 mag_fmt(bytes as u64), blob.id, mag_fmt(remaining)));
                     }
                 },
                 Err(err) => {
@@ -329,7 +329,7 @@ impl Heap {
 
         let available = self.available();
 
-        println!("heap::gc::complete[free'd:{}({}%) relocated:{}({}%) available:{}({}%)] elapsed:{:?}",
+        println!("heap::gc::compaction::complete[free'd:{}({}%) relocated:{}({}%) available:{}({}%)] elapsed:{:?}",
                  mag_fmt(collected),
                  100 * collected / self.capacity as u64,
                  mag_fmt(relocated),
