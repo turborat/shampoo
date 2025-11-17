@@ -201,19 +201,19 @@ impl Heap {
         }
     }
 
-    pub fn cas_tail(&self, curr:u64, next:u64) -> bool {
+    fn cas_tail(&self, curr:u64, next:u64) -> bool {
         unsafe {
             cas_u64("tail", &(*self.meta).tail, curr, next)
         }
     }
 
-    pub fn load_head(&self) -> u64 {
+    fn load_head(&self) -> u64 {
         unsafe {
             aload_u64("head", &(*self.meta).head)
         }
     }
 
-    pub fn load_tail(&self) -> u64 {
+    fn load_tail(&self) -> u64 {
         unsafe {
             aload_u64("tail", &(*self.meta).tail)
         }
@@ -243,7 +243,7 @@ impl Heap {
         Ok(blob)
     }
 
-    pub fn gc_tail<F>(&self, is_garbage:&F) -> Result<usize, ShampooCondition>
+    fn gc_tail<F>(&self, is_garbage:&F) -> Result<usize, ShampooCondition>
         where F : Fn(*const Blob) -> bool
     {
         let tail = self.load_tail();
@@ -415,6 +415,7 @@ impl Heap {
             }
 
             mat.add(&blob.data_view());
+
             mat.nl();
         });
 
