@@ -36,8 +36,8 @@ impl fmt::Display for Blob {
 }
 
 impl Blob {
-    pub fn init(addr:*const u8, name:&str, data:&[u8], id:u64, len:u64) -> &'static Blob {
-        if len < (Blob::header_len() + name.len() + data.len()) as u64 {
+    pub fn init(addr:*const u8, name:&str, data:&[u8], id:u64, len:usize) -> &'static Blob {
+        if len < Blob::header_len() + name.len() + data.len() {
             panic!("overflow ({})", Blob::header_len() + name.len() + data.len())
         }
 

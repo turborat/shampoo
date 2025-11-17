@@ -50,10 +50,10 @@ pub fn astore_u64(name:&str, addr:*const u64, val:u64) -> u64 {
 }
 
 pub fn aload_u64(_name:&str, addr:* const u64) -> u64 {
+    if addr as u64 == 0 {
+        panic!("invalid access");
+    }
     unsafe {
-        if addr as u64 == 0 {
-            panic!("invalid access");
-        }
         (*(addr as *const AtomicU64)).load(SeqCst)
     }
 }

@@ -124,13 +124,13 @@ impl Heap {
         puts(format!("heap::validate::{} blobs OK", n));
     }
 
-    fn find_block(&self, requested_len:usize) -> Result<(u64, u64), ShampooCondition> {
+    fn find_block(&self, requested_len:usize) -> Result<(u64, usize), ShampooCondition> {
         if requested_len % 8 != 0 {
             panic!("len % 8 != 0");
         }
 
         loop {
-            puts(format!("heap::find_block {} bytes requested", requested_len));
+            puts(format!("heap::find_block::{} bytes requested", requested_len));
             let available = self.available();
             if available < requested_len {
                 puts(format!("heap::find_block::not enough memory. available={} requested={}", available, requested_len));
@@ -157,11 +157,11 @@ impl Heap {
                 assert_eq!(self.boh, self.rard(end) as u64);
             }
 
-            puts(format!("heap::find_block proposing {} .. {} len:{}", self.id_str(begin), self.id_str(end), end-begin));
+            puts(format!("heap::find_block::proposing {} .. {} len:{}", self.id_str(begin), self.id_str(end), end-begin));
 
             if self.cas_head(begin, end) {
                 puts(format!("heap::find_block::acquired block @{:x}", begin));
-                return Ok((begin, end-begin));
+                return Ok((begin, (end-begin) as usize));
             }
             else {
                 puts(format!("heap::find_block::acquisition unsuccessful - will retry"));
@@ -188,7 +188,7 @@ impl Heap {
             let pad = vec![0u8; pad_len - Blob::header_len()];
             let addr = self.rard(head) as *const u8;
             //race:
-            let blob = Blob::init(addr, "", &pad, head, pad_len as u64);
+            let blob = Blob::init(addr, "", &pad, head, pad_len);
             assert_eq!(self.eoh, blob.addr() + blob.len as u64);
         } else {
             puts(format!("heap::pad::WARN::pad did not succeed. hoping for best"));
