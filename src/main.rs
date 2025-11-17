@@ -16,18 +16,19 @@ mod util;
 mod blob;
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let args:Vec<String> = env::args().collect();
     run(args);
 }
 
-pub fn run(args: Vec<String>) {
+pub fn run(mut args:Vec<String>) {
     if args.len() < 2 {
         usage();
     }
 
-    if args.contains(&"-v".to_string()) {
+    if let Some(pos) = args.iter().position(|e| e == "-v") {
         shampoo::VERBOSE.store(true, Relaxed);
         shmem::ECHO.store(true, Relaxed);
+        args.remove(pos);
     }
 
     match args[1].as_str() {
@@ -50,17 +51,12 @@ pub fn run(args: Vec<String>) {
             }
         }
         "put" => {
-            if args.len() < 3 {
-                die(-2, "missing arg: key)");
+            if args.len() != 3 {
+                die(-2, "one arg required: key");
             }
 
             let mut buf = Vec::new();
-            if args.len() > 3 {
-                buf.extend_from_slice(args[3].as_bytes());
-            }
-            else {
-                stdin().read_to_end(&mut buf).unwrap();
-            };
+            stdin().read_to_end(&mut buf).unwrap();
 
             match Shampoo::attach().put(&args[2], &buf) {
                 Ok(_) => println!("put {}", mag_fmt(buf.len() as u64)),
@@ -69,12 +65,12 @@ pub fn run(args: Vec<String>) {
             };
         }
         "get" => {
-            if args.len() < 3 {
-                die(-4, "get requires an additional argument, key");
+            if args.len() != 3 {
+                die(-4, "get requires one arg: key");
             }
             match Shampoo::attach().get(args[2].as_str()) {
                 None => eprintln!("<nothing>"),
-                Some(data) => println!("{}", str(data.as_ptr(), data.len()))
+                Some(data) => print!("{}", str(data.as_ptr(), data.len()))
             };
         },
         "heap"      => Shampoo::attach().show_heap(),

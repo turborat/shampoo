@@ -76,44 +76,36 @@ impl Shampoo {
         !self.hash.references(blob, &|id| self.heap.blob(id))
     }
 
-    fn rard(&self, id:u64) -> *const Blob {
-        self.heap.rard(id)
-    }
-
-    fn blob(&self, id:u64) -> &'static Blob {
-        unsafe { &*self.rard(id) }
-    }
-
     pub fn put(&self, name:&str, data:&[u8]) -> Result<(), ShampooCondition> {
         let blob = self.heap.allocate(name, data)?;
-        self.hash.put(blob, &|id| self.blob(id))?;
+        self.hash.put(blob, &|id| self.heap.blob(id))?;
         Ok(())
     }
 
     pub fn get(&self, name:&str) -> Option<Vec<u8>> {
-        let blob = self.hash.get(name, |id| self.blob(id))?;
+        let blob = self.hash.get(name, |id| self.heap.blob(id))?;
         Some(blob.data())
     }
 
     pub fn info(&self) {
-        println!("{}", &self.hash.report(&|id| self.blob(id)));
-        println!("{}", &self.heap.report(&|blob|self.is_garbage(blob)));
+        println!("{}", &self.hash.report(&|id| self.heap.blob(id)));
+        println!("{}", &self.heap.report(&|blob| self.is_garbage(blob)));
         if VERBOSE.load(Relaxed) {
             self.heap.info();
         }
     }
 
     pub fn show_hash(&self) {
-        println!("{}", &self.hash.report(&|id| self.blob(id)));
-        self.hash.print(|id| self.blob(id));
+        println!("{}", &self.hash.report(&|id| self.heap.blob(id)));
+        self.hash.print(|id| self.heap.blob(id));
     }
 
     pub fn show_heap(&self) {
-        println!("{}", self.heap.report(&|blob|self.is_garbage(blob)));
+        println!("{}", self.heap.report(&|blob| self.is_garbage(blob)));
         if VERBOSE.load(Relaxed) {
             self.heap.info();
         }
-        self.heap.print(&|blob|self.is_garbage(blob));
+        self.heap.print(&|blob| self.is_garbage(blob));
     }
 
     pub fn show_pairs(&self) {
@@ -165,9 +157,7 @@ impl Shampoo {
                     self.put(&(*blob).name(), &(*blob).data())
                 }
             ) {
-                Ok(_) => {
-                    sleep(Duration::from_micros(100))
-                },
+                Ok(_) => sleep(Duration::from_micros(100)),
                 Err(err) => die(-13, &format!("{:?}", err))
             };
         }
