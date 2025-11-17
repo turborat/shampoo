@@ -15,4 +15,4 @@ Features
 * O(1) scalability wrt number of clients (up to a point)
 * Nifty heap & hash visualisation tools
 * Abilty to monitor, replicate, snapshot, etc. instantaneously.
-* Multiple garbage compaction algorithms depending on use-case
+* Multiple trash compaction algorithms depending on use-case
