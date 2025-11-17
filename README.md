@@ -12,7 +12,7 @@ Features
 * Lock-free / highly concurrent
 * Copy-free
 * O(1) scalability for all operations
-* O(1) scalability wrt number of clients
+* O(1) scalability wrt number of clients (up to a point)
 * Nifty heap & hash visualisation tools
 * Abilty to monitor, replicate, snapshot, etc. instantaneously.
 * Multiple garbage compaction algorithms depending on use-case
