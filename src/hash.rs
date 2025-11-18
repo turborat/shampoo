@@ -61,11 +61,11 @@ impl Hash {
         Hash { base: base as *mut Entry, bins: bins as u32 }
     }
 
-    pub fn put<F>(&self, blob:*const Blob, rard:&F) -> Result<*const Blob, ShampooCondition>
+    pub fn put<F>(&self, blob:&Blob, rard:&F) -> Result<*const Blob, ShampooCondition>
         where F : Fn(u64) -> &'static Blob
     {
-        let name = unsafe { (*blob).name() } ;
-        let xx = unsafe { (*blob).hash() };
+        let name = blob.name();
+        let xx = blob.hash();
         let mut bin = xx % self.bins;
 
         puts(format!("xxhash({}) -> {:x} % {} = bin {}", name, xx, self.bins, bin));
@@ -76,7 +76,7 @@ impl Hash {
             }
 
             // is the bin empty ?
-            let prev_id = self.cas_addr(bin, 0, unsafe { (*blob).id });
+            let prev_id = self.cas_addr(bin, 0, blob.id);
             if 0 == prev_id {
                 return Ok(0 as *const Blob);
             }
@@ -89,9 +89,9 @@ impl Hash {
             }
 
             // is the name the same?
-            if unsafe { (*blob).name() } == prev_blob.name() {
+            if blob.name() == prev_blob.name() {
                 puts("hash::put::performing update".to_string());
-                let prev = self.store_id(bin, unsafe { (*blob).id });
+                let prev = self.store_id(bin, blob.id);
                 return Ok(prev as *const Blob);
             }
 
