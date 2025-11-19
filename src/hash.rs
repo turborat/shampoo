@@ -61,7 +61,7 @@ impl Hash {
         Hash { base: base as *mut Entry, bins: bins as u32 }
     }
 
-    pub fn put<F>(&self, blob:&Blob, rard:&F) -> Result<*const Blob, ShampooCondition>
+    pub fn put<F>(&self, blob:&Blob, rard:&F) -> Result<Option<&'static Blob>, ShampooCondition>
         where F : Fn(u64) -> &'static Blob
     {
         let name = blob.name();
@@ -72,27 +72,27 @@ impl Hash {
 
         loop {
             if bin >= self.bins {
-                return Err(EndOfSegment)
+                return Err(EndOfSegment); // todo: test this
             }
 
             // is the bin empty ?
-            let prev_id = self.cas_addr(bin, 0, blob.id);
-            if 0 == prev_id {
-                return Ok(0 as *const Blob);
+            let curr_id = self.cas_id(bin, 0, blob.id);
+            if 0 == curr_id {
+                return Ok(None);
             }
 
-            let prev_blob = rard(prev_id);
+            let curr_blob = rard(curr_id);
 
             // this bin is already overflowed?
-            if bin != prev_blob.hash() % self.bins {
-                return Err(BucketCollision);
+            if bin != curr_blob.hash() % self.bins {
+                return Err(BucketCollision); // todo: test this
             }
 
             // is the name the same?
-            if blob.name() == prev_blob.name() {
+            if blob.name() == curr_blob.name() {
                 puts("hash::put::performing update".to_string());
                 let prev = self.store_id(bin, blob.id);
-                return Ok(prev as *const Blob);
+                return Ok(Some(rard(prev)));
             }
 
             // try next bin
@@ -114,8 +114,8 @@ impl Hash {
                 return None;
             }
 
-            let entry = unsafe { self.base.add(bin as usize) };
-            let id = unsafe { (*entry).id };
+            let entry = unsafe { &*self.base.add(bin as usize) };
+            let id = entry.id;
 
             if id == 0 {
                 puts("hash::get::bin empty, returning".to_string());
@@ -148,7 +148,7 @@ impl Hash {
         }
     }
 
-    fn cas_addr(&self, bin:u32, curr:u64, next:u64) -> u64 {
+    fn cas_id(&self, bin:u32, curr:u64, next:u64) -> u64 {
         let addr = &self.entry_at(bin).id as *const u64;
         match cas_u64x(&format!("bin[{}]", bin), addr, curr, next) {
             Ok(prev) => prev,
@@ -156,6 +156,7 @@ impl Hash {
         }
     }
 
+    // write id to bin - no cas
     fn store_id(&self, bin:u32, id:u64) -> u64 {
         let addr = &self.entry_at(bin).id as *const u64;
         astore_u64(&format!("bin[{}]", bin), addr, id)
@@ -177,15 +178,20 @@ impl Hash {
         for bin in 0..self.bins {
             let entry = self.entry_at(bin);
             if entry.id != 0 {
-                mat.add(&format!("[{}] ", bin));
+                let blob = rard(entry.id);
+                let xx = blob.hash();
+
+                mat.add(&format!("[{}]", bin));
+                mat.add(&format!("#{:x}", xx));
                 mat.add(&format!("@{:x} ->", entry as *const Entry as u64));
                 mat.add(&format!("id:{}", entry.id));
+                mat.add(&format!("'{}'", blob.name()));
 
-                let blob = rard(entry.id);
-                let should_be_bin = blob.hash() % self.bins;
-                if should_be_bin != bin {
-                    mat.add(&format!("(actually [{}])", should_be_bin));
+                let orig_bin = xx % self.bins;
+                if orig_bin != bin {
+                    mat.add(&format!("(overflowed from [{}])", orig_bin));
                 }
+
                 mat.nl();
             }
         }
@@ -233,6 +239,21 @@ pub(crate) mod tests {
     use heap::tests::init_heap;
     use crate::hash::Hash;
     use crate::heap;
+
+    #[test]
+    fn test_put() {
+        let hash_mem = [0u8; 1<<8];
+        let hash = init_hash(&hash_mem, 8);
+
+        let heap_mem = [0u8; 1<<8];
+        let heap = init_heap(&heap_mem);
+        let blob1 = heap.allocate("blob1", "blah".as_bytes()).unwrap();
+
+        assert_eq!(None, hash.put(blob1, &|id| heap.blob(id)).unwrap());
+        assert_eq!(Some(blob1), hash.put(blob1, &|id| heap.blob(id)).unwrap());
+
+        hash.print(&|id| heap.blob(id));
+    }
 
     #[test]
     fn test_put_get() {
@@ -332,8 +353,8 @@ pub(crate) mod tests {
         assert_eq!(2, report.free);
         assert_eq!(1, report.overflows);
 
-        assert_eq!("abc".as_bytes(), (*hash.get("blob", &|id| heap.blob(id)).unwrap()).data().as_slice());
-        assert_eq!("xyz".as_bytes(), (*hash.get("blobZ", &|id| heap.blob(id)).unwrap()).data().as_slice());
+        assert_eq!("abc".as_bytes(), hash.get("blob", &|id| heap.blob(id)).unwrap().data().as_slice());
+        assert_eq!("xyz".as_bytes(), hash.get("blobZ", &|id| heap.blob(id)).unwrap().data().as_slice());
     }
 
     #[test]

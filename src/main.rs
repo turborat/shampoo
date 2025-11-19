@@ -88,9 +88,9 @@ pub fn run(mut args:Vec<String>) {
             else {
                 println!("shampoo::gc::loop starting");
                 loop {
-                    let sleepNs = (args[2].parse::<f64>().unwrap() * 1000000000.0) as u64;
+                    let sleep_ns = (args[2].parse::<f64>().unwrap() * 1000000000.0) as u64;
                     shampoo.gc();
-                    sleep(Duration::from_nanos(sleepNs));
+                    sleep(Duration::from_nanos(sleep_ns));
                 }
             }
         }

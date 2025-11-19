@@ -18,7 +18,7 @@ use crate::util::puts;
 pub struct Metadata {
     pub magic: [u8;4],
     pub head: u64,
-    pub tail: u64
+    pub tail:u64
 }
 
 impl Metadata {
@@ -82,17 +82,17 @@ impl Heap {
     }
 
     pub fn init(base: *const u8, capacity:usize) {
-        let meta = base as *mut Metadata;
+        let meta = unsafe { &mut (*(base as *mut Metadata)) };
 
-        if !cas_u64("heap/magic", unsafe { (*meta).magic.as_mut_ptr() } as *const u64, 0, str_to_u64("HEAP")) {
+        if !cas_u64("heap/magic", meta.magic.as_mut_ptr() as *const u64, 0, str_to_u64("HEAP")) {
             panic!("wtf")
         }
 
-        assert_eq!(0, unsafe { (*meta).head }, "heap unclean");
-        assert_eq!(0, unsafe { (*meta).tail }, "heap unclean");
+        assert_eq!(0, meta.head, "heap unclean");
+        assert_eq!(0, meta.tail, "heap unclean");
 
-        unsafe { (*meta).head = 1 };
-        unsafe { (*meta).tail = 1 };
+        meta.head = 1;
+        meta.tail = 1;
 
         println!("Initialized heap with capacity {}", mag_fmt(capacity as u64));
     }
