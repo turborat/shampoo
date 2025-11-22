@@ -94,7 +94,7 @@ impl Heap {
         meta.head = 1;
         meta.tail = 1;
 
-        println!("Initialized heap with capacity {}", mag_fmt(capacity as u64));
+        println!("heap::init::capacity={}", mag_fmt(capacity as u64));
     }
 
     pub fn validate(&self) {

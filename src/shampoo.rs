@@ -239,10 +239,10 @@ fn attach(name:&str, size: size_t, create:bool) -> *mut u8 {
         // todo: delete region upon exit - munmap() //
 
         if create {
-            println!("Initialized shared memory segment {} @{:x} ({} bytes)", name, addr as u64, size);
+            println!("shmem::init::segment {} @{:x} ({} bytes)", name, addr as u64, size);
         }
         else {
-            puts(format!("shmem::attach::created segment {} @{:x} ({} bytes)", name, addr as u64, size));
+            puts(format!("shmem::attach::segment {} @{:x} ({} bytes)", name, addr as u64, size));
         }
 
         addr as *mut u8

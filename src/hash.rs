@@ -31,7 +31,7 @@ pub struct HashReport {
 
 impl Display for HashReport {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "HASH bins[used:{}({}%) free:{}({}%) overflows:{}] -> load:{}",
+        write!(f, "hash::info::bins[used:{}({}%) free:{}({}%) overflows:{}] -> load:{}",
             self.used,
             100 * self.used / (self.used + self.free),
             self.free,
@@ -150,10 +150,7 @@ impl Hash {
 
     fn cas_id(&self, bin:u32, curr:u64, next:u64) -> u64 {
         let addr = &self.entry_at(bin).id as *const u64;
-        match cas_u64x(&format!("bin[{}]", bin), addr, curr, next) {
-            Ok(prev) => prev,
-            Err(curr) => curr
-        }
+        cas_u64x(&format!("bin[{}]", bin), addr, curr, next).unwrap_or_else(|curr| curr)
     }
 
     // write id to bin - no cas
