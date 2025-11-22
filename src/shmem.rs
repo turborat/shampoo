@@ -24,9 +24,7 @@ pub fn str(ptr: *const u8, len:usize) -> String {
 }
 
 pub fn inc_ptr<T>(ptr: *const T, offset:usize) -> *mut T {
-    unsafe {
-        (ptr as *const u8).add(offset) as *mut T
-    }
+    unsafe { (ptr as *const u8).add(offset) as *mut T }
 }
 
 
@@ -53,9 +51,7 @@ pub fn aload_u64(_name:&str, addr:* const u64) -> u64 {
     if addr as u64 == 0 {
         panic!("invalid access");
     }
-    unsafe {
-        (*(addr as *const AtomicU64)).load(SeqCst)
-    }
+    unsafe { (*(addr as *const AtomicU64)).load(SeqCst) }
 }
 
 pub fn cas_u64(name:&str, addr:* const u64, cur:u64, new:u64) -> bool {
