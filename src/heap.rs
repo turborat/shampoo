@@ -187,7 +187,7 @@ impl Heap {
         if self.cas_head(head, head + pad_len as u64) {
             let pad = vec![0u8; pad_len - Blob::header_len()];
             let addr = self.rard(head) as *const u8;
-            //race:
+            //race?
             let blob = Blob::init(addr, "", &pad, head, pad_len);
             assert_eq!(self.eoh, blob.addr() + blob.len as u64);
         } else {
@@ -202,21 +202,15 @@ impl Heap {
     }
 
     fn cas_tail(&self, curr:u64, next:u64) -> bool {
-        unsafe {
-            cas_u64("tail", &(*self.meta).tail, curr, next)
-        }
+        cas_u64("tail", unsafe { &(*self.meta).tail }, curr, next)
     }
 
     fn load_head(&self) -> u64 {
-        unsafe {
-            aload_u64("head", &(*self.meta).head)
-        }
+        aload_u64("head", unsafe { &(*self.meta).head })
     }
 
     fn load_tail(&self) -> u64 {
-        unsafe {
-            aload_u64("tail", &(*self.meta).tail)
-        }
+        aload_u64("tail", unsafe { &(*self.meta).tail })
     }
 
     fn id_str(&self, id:u64) -> String {

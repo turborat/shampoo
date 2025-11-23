@@ -63,7 +63,7 @@ impl Shampoo {
         if !path.exists() {
             puts(format!("shampoo::check_path::{} <- does not exist", fname));
             if suicide {
-                die(-10, "Shampoo not initialized. -- try: shampoo init <hash_size> <heap_size>");
+                die(-10, "Not initialized. -- try: shampoo init <hash_size> <heap_size>");
             }
             return 0;
         }
