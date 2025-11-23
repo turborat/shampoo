@@ -196,9 +196,7 @@ impl Heap {
     }
 
     fn cas_head(&self, curr:u64, next:u64) -> bool {
-        unsafe {
-            cas_u64("head", &(*self.meta).head, curr, next)
-        }
+        cas_u64("head", unsafe { &(*self.meta).head }, curr, next)
     }
 
     fn cas_tail(&self, curr:u64, next:u64) -> bool {
@@ -238,7 +236,7 @@ impl Heap {
     }
 
     fn gc_tail<F>(&self, is_garbage:&F) -> Result<usize, ShampooCondition>
-        where F : Fn(*const Blob) -> bool
+        where F : Fn(&'static Blob) -> bool
     {
         let tail = self.load_tail();
         
@@ -269,8 +267,8 @@ impl Heap {
     }
 
     pub fn gc_run<F,G>(&self, is_garbage:&F, re_add:&G) -> Result<usize, ShampooCondition>
-        where F : Fn(*const Blob) -> bool,
-              G : Fn(*const Blob) -> Result<(), ShampooCondition>
+        where F : Fn(&'static Blob) -> bool,
+              G : Fn(&'static Blob) -> Result<(), ShampooCondition>
     {
         let report = self.report(is_garbage);
         let garbage = report.frag_bytes as u64;
@@ -336,7 +334,7 @@ impl Heap {
     }
 
     pub fn walk<F>(&self, visitor:&mut F)
-        where F: FnMut(&Blob)
+        where F: FnMut(&'static Blob)
     {
         let start = Instant::now();
         let mut id = self.load_tail();
@@ -374,7 +372,7 @@ impl Heap {
     }
 
     pub fn print<F>(&self, is_garbage:&F)
-        where F : Fn(*const Blob) -> bool
+        where F : Fn(&'static Blob) -> bool
     {
         let mut mat = Matrix::new();
 
@@ -421,7 +419,7 @@ impl Heap {
     }
 
     pub fn report<F>(&self, is_garbage:&F) -> HeapReport
-        where F : Fn(*const Blob) -> bool
+        where F : Fn(&'static Blob) -> bool
     {
         let mut report = HeapReport {
             blobs: 0,
@@ -446,19 +444,17 @@ impl Heap {
     }
 
     pub fn info(&self) {
-        unsafe {
-            let boh_id = 1;
-            let eoh_id = self.eoh - self.boh + 1;
-            println!("heap::info[capacity:{} boh:{:x}/{} eoh:{:x}/{}]",
-                     self.capacity,
-                     self.boh,
-                     boh_id,
-                     self.eoh,
-                     eoh_id);
-            println!("heap::info[tail->{} head->{}]",
-                     self.id_str((*self.meta).tail),
-                     self.id_str((*self.meta).head));
-        }
+        let boh_id = 1;
+        let eoh_id = self.eoh - self.boh + 1;
+        println!("heap::info[capacity:{} boh:{:x}/{} eoh:{:x}/{}]",
+                 self.capacity,
+                 self.boh,
+                 boh_id,
+                 self.eoh,
+                 eoh_id);
+        println!("heap::info[tail->{} head->{}]",
+                 self.id_str(unsafe { (*self.meta).tail }),
+                 self.id_str(unsafe { (*self.meta).head }));
     }
 }
 
@@ -810,9 +806,9 @@ pub mod tests {
 
         let is_garbage = &|id| !hash.references(id, |id| heap.blob(id));
 
-        let re_add = &mut|old_blob:*const Blob| {
-            let name = unsafe { (*old_blob).name() };
-            let data = unsafe { (*old_blob).data() };
+        let re_add = &mut|old_blob:&Blob| {
+            let name = old_blob.name();
+            let data = old_blob.data();
             let blob = heap.allocate(&name, &data)?;
             hash.put(blob, &|id| heap.blob(id))?;
             Ok(())

@@ -114,7 +114,7 @@ impl Hash {
                 return None;
             }
 
-            let entry = unsafe { &*self.base.add(bin as usize) };
+            let entry = self.entry_at(bin);
             let id = entry.id;
 
             if id == 0 {
@@ -138,12 +138,12 @@ impl Hash {
         }
     }
 
-    pub fn references<F>(&self, blob:*const Blob, rard:F) -> bool
+    pub fn references<F>(&self, blob:&Blob, rard:F) -> bool
         where F : Fn(u64) -> &'static Blob
     {
-        let name = unsafe { (*blob).name() };
+        let name = blob.name();
         match self.get(&name, rard) {
-            Some(my_blob) => my_blob == unsafe { &(*blob) },
+            Some(my_blob) => my_blob == blob,
             None => false
         }
     }

@@ -70,7 +70,7 @@ impl Shampoo {
         fs::metadata(path).unwrap().len()
     }
 
-    fn is_garbage(&self, blob:*const Blob) -> bool {
+    fn is_garbage(&self, blob:&Blob) -> bool {
         !self.hash.references(blob, &|id| self.heap.blob(id))
     }
 
@@ -149,9 +149,7 @@ impl Shampoo {
     pub fn gc(&self) {
         self.heap.gc_run(
             &mut|blob| self.is_garbage(blob),
-            &mut|blob| unsafe {
-                self.put(&(*blob).name(), &(*blob).data())
-            }
+            &mut|blob| self.put(&blob.name(), &blob.data())
         ).unwrap();
     }
 
