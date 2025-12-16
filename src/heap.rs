@@ -170,7 +170,7 @@ impl Heap {
     }
 
     // id -> *Blob //
-    pub fn rard(&self, id:u64) -> *const Blob {
+    fn rard(&self, id:u64) -> *const Blob {
         (self.boh + ((id - 1) % (self.eoh - self.boh))) as *const Blob
     }
 
