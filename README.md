@@ -1,7 +1,7 @@
 # shampoo
 A serverless, high-performance data cache.
 
-The orignal idea was something like redis but good. The project ignited when I realised 
+The orignal idea was something like Redis but good. The project ignited when I realised 
 it was possible to accomplish in a performant, serverless fashion by relying 
 heavily on compare-and-swap (CAS) atomic operations and memory barriers whilst 
 minimising copies by using shared memory. 
